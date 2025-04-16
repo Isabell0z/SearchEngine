@@ -1,0 +1,10 @@
+{
+  "univers": {
+    "doc1": {"tf": 2, "positions": [5, 17]},
+    "doc2": {"tf": 1, "positions": [8]}
+  },
+  "hong": {
+    "doc2": {"tf": 1, "positions": [1]},
+    "doc3": {"tf": 1, "positions": [3]}
+  }
+}

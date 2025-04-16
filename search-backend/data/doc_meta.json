@@ -1,0 +1,35 @@
+{
+  "doc1": {
+    "title": "Top Universities in Asia",
+    "url": "http://example.com/doc1",
+    "length": 250,
+    "max_tf": 20,
+    "last_modified": 20,
+    "size": 1,
+    "keywords": "2",
+    "parent_links": ["1"],
+    "child_links": ["1"]
+  },
+  "doc2": {
+    "title": "Study in Hong Kong",
+    "url": "http://example.com/doc2",
+    "length": 180,
+    "max_tf": 12,
+    "last_modified": 20,
+    "size": 1,
+    "keywords": "2",
+    "parent_links": ["1"],
+    "child_links": ["1"]
+  },
+  "doc3": {
+    "title": "Study in Hong Kong 2",
+    "url": "http://example.com/doc3",
+    "length": 140,
+    "max_tf": 10,
+    "last_modified": 20,
+    "size": 1,
+    "keywords": "2",
+    "parent_links": ["1"],
+    "child_links": ["1"]
+  }
+}
