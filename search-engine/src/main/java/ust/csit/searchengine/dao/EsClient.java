@@ -1,7 +1,10 @@
 package ust.csit.searchengine.dao;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch.core.*;
+import co.elastic.clients.elasticsearch.core.BulkResponse;
+import co.elastic.clients.elasticsearch.core.GetResponse;
+import co.elastic.clients.elasticsearch.core.IndexResponse;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
@@ -16,7 +19,6 @@ import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 @Repository
 public class EsClient {
@@ -38,6 +40,7 @@ public class EsClient {
 
     /**
      * 创建索引
+     *
      * @param indexName
      * @throws IOException
      */
@@ -61,32 +64,6 @@ public class EsClient {
     }
 
     // 批量写入
-    public <T> void bulkIndex(String indexName, Map<String, T> dataMap) throws IOException {
-        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
-
-        for (Map.Entry<String, T> entry : dataMap.entrySet()) {
-            String term = entry.getKey();
-            T info = entry.getValue();
-
-            // 构建索引请求
-            bulkBuilder.operations(op -> op
-                    .index(idx -> idx
-                            .index(indexName)
-                            .id(term)  // 使用 term 作为文档 ID
-                            .document(info)
-                    )
-            );
-        }
-
-        // 执行批量写入
-        BulkResponse response = client.bulk(bulkBuilder.build());
-
-        // 检查是否有错误
-        if (response.errors()) {
-            handleBulkError(response);
-        }
-    }
-
     private void handleBulkError(BulkResponse response) {
         // 处理批量写入错误
         StringBuilder errorMessage = new StringBuilder("Bulk indexing failed:\n");
@@ -110,6 +87,22 @@ public class EsClient {
                     )
             ));
         }
+
+        return client.bulk(b -> b
+                .operations(operations)
+        );
+    }
+
+    public <T> BulkResponse bulkIndex(String index, T document) throws IOException {
+        List<BulkOperation> operations = new ArrayList<>();
+
+        operations.add(BulkOperation.of(o -> o
+                .index(i -> i
+                        .document(document)
+                        .index(index)
+                )
+        ));
+
 
         return client.bulk(b -> b
                 .operations(operations)
