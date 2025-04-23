@@ -18,12 +18,25 @@
         </el-col>
       </el-row>
     </el-card>
-
+    <div v-if="aiResult" class="mt-8">
+      <el-card class="p-4 rounded-lg border border-gray-200">
+        <h3 class="text-l font-semibold text-gray-800">AI Response</h3>
+        <p class="text-gray-600 mt-4">{{ aiResult }}</p>
+      </el-card>
+    </div>
     <div v-if="results && results.length" class="mt-8 space-y-6">
       <SearchResult
-        v-for="(result, index) in results"
+        v-for="(result, index) in paginatedResults"
         :key="index"
         :result="result"
+      />
+      <el-pagination
+        :current-page="currentPage"
+        :page-size="itemsPerPage"
+        :total="results.length"
+        @current-change="handlePageChange"
+        layout="prev, pager, next, jumper"
+        class="flex justify-center mt-6"
       />
     </div>
 
@@ -33,14 +46,69 @@
 </template>
 
 <script setup>
-
-import { ref } from 'vue'
-
+import { computed } from 'vue';
+import { ref, onMounted } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 import SearchResult from '@/components/SearchResult.vue'
-
+const aiResult = ref("AI result");
+const authStore = useAuthStore();
 const query = ref('')
 const results = ref([])
 const searched = ref(false)
+const history = ref([])
+const itemsPerPage = 10;
+const currentPage = ref(1);
+const paginatedResults = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage;
+  const end = start + itemsPerPage;
+  return results.value.slice(start, end);
+});
+const handlePageChange = (page) => {
+  currentPage.value = page;
+  window.scrollTo(0, 0);
+};
+const getSuggestions = (queryString, cb) => {
+  let suggestions = []
+
+  if (queryString === '') {
+    suggestions = history.value
+  } else {
+    suggestions = history.value.filter(item =>
+      item.toLowerCase().includes(queryString.toLowerCase())
+    )
+  }
+
+  // 转换为 Element Plus 可识别格式
+  const formatted = suggestions.map(item => ({ value: item }))
+  cb(formatted)
+}
+
+const fetchHistory = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch('http://127.0.0.1:5001/history', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      console.log('search history:', data)
+      history.value = data
+    }
+  } catch (error) {
+    console.error('Failed to fetch history:', error)
+  }
+}
+
+onMounted(() => {
+  if (authStore.isLoggedIn) {
+    fetchHistory();
+  }
+});
+
 const search = async () => {
   try {
     const token = localStorage.getItem('token');
@@ -48,11 +116,11 @@ const search = async () => {
       method: 'POST', // 使用 POST 方法
       headers: {
         'Content-Type': 'application/json', // 设置请求体类型为 JSON
-        'Authorization': 'Bearer ' + token
+        ...(authStore.isLoggedIn && { 'Authorization': 'Bearer ' + token })
       },
       body: JSON.stringify({ data: query.value }) // 发送数据，将 query.value 包装为 JSON 格式
     });
-    console.log('Token sent:', token);
+    console.log('Token sent:', authStore.isLoggedIn ? token : '[Not logged in]');
     console.log('Sending search query:', query.value);
     // 解析返回的 JSON 数据
     const data = await res.json();
@@ -70,45 +138,6 @@ const search = async () => {
 <script>
   export default {
     name: 'SearchPage',
-    data() {
-    return {
-      query: "",  // 当前输入框的内容
-      history: ['111']  // 存储历史搜索记录
-    };
-  },
-  methods: {
-    async getSuggestions(query) {
-      if (query === "") {
-        return this.history;  // 如果没有输入，直接显示历史记录
-      } else {
-        // 如果有输入，返回符合条件的历史记录（模糊匹配）
-        return this.history.filter(item => item.toLowerCase().includes(query.toLowerCase()));
-      }
-    },
-    async fetchHistory() {
-      try {
-        const token = localStorage.getItem('token');
-        const res = await fetch('http://127.0.0.1:5001/history', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token
-          }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          console.log('search history:',data);
-          this.history = data;  // 存储历史搜索记录
-        }
-      } catch (error) {
-        console.error('Failed to fetch history:', error);
-      }
-    },
-    created() {
-    this.fetchHistory();  // 在组件创建时获取历史记录
-  }
-  }
-  
   }
 
 </script>
@@ -127,6 +156,18 @@ const search = async () => {
 .search-button {
   margin-left: 10px; /* Optional: space between input and button */
 }
+
+.el-autocomplete-suggestion {
+  z-index: 9999 !important;
+}
+
 </style>
 
-  
+<style scoped>
+/* 您可以在这里添加自定义分页样式 */
+.el-pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+</style>

@@ -1,61 +1,88 @@
 <!-- src/components/SearchResult.vue -->
 <template>
-    <el-card shadow="hover">
-      <template #header>
-        <div class="flex justify-between items-center">
-          <span>
-            <strong>Score:</strong> {{ result.score }}
-          </span>
-          <el-link :href="result.content.url" target="_blank">{{ result.content.title }}</el-link>
-        </div>
-      </template>
-  
-      <div class="mb-2 text-sm text-gray-600">
-        <el-link :href="result.content.url" type="info" target="_blank">{{ result.content.url }}</el-link>
-      </div>
-  
-      <div class="mb-2 text-xs text-gray-500">
-        {{ result.content.last_modified || 'Unknown date' }},
-        {{ result.content.size ? result.content.size + ' chars' : 'Unknown size' }}
-      </div>
-  
-      <div class="mb-2 text-sm">
-        <strong>Top Keywords:</strong>
+  <el-card shadow="hover" class="p-4 rounded-lg border border-gray-200 w-full">
+  <template #header>
+    <el-row :gutter="20" class="mb-6">
+    <el-col :span="20">
+      <el-link
+        :href="result.content.url"
+        target="_blank"
+        class="text-10xl font-black text-blue-600 hover:text-blue-800 transition-colors duration-200 truncate"
+      >
+        {{ result.content.title }}
+      </el-link>
+    </el-col>
+    <el-col :span="4" class="text-right">
+      <!-- Score (right side) -->
+      <span class="text-xs font-thin text-gray-300 ml-auto">
+         Score: {{ result.score.toFixed(2) }}
+      </span>
+    </el-col>
+  </el-row>
+  <el-row :gutter="20" class="mb-6">
+    <el-col :span="20" class="text-right">
+      <span class="text-xs font-thin text-gray-300 ml-auto">
+        Last modified: {{ result.content.last_modified || 'Unknown date' }}
+      </span>
+    </el-col>
+    <el-col :span="4" class="text-right">
+      <span class="text-xs font-thin text-gray-300 ml-auto">
+        Size: {{ result.content.size ? result.content.size + ' chars' : 'Unknown size' }}
+      </span>
+    </el-col>
+  </el-row>
+  </template>
+
+    <div class="mb-4 text-sm text-gray-800">
+      <strong>Top Keywords:</strong>
+      <div class="flex flex-wrap gap-2">
         <el-tag
           v-for="(freq, word) in result.content.keywords"
           :key="word"
           type="success"
           size="small"
-          class="mr-2 mb-1"
+          class="mb-1"
         >
-          {{ word }} ({{ freq }})
+          {{ word }} (frequency: {{ freq }})
         </el-tag>
       </div>
-  
-      <div v-if="result.content.parent_links.length">
-        <strong>Parent Links:</strong>
-        <ul class="ml-4 text-sm text-blue-600 list-disc">
-          <li v-for="(link, i) in result.content.parent_links" :key="'p' + i">
-            <el-link :href="link" target="_blank">{{ link }}</el-link>
-          </li>
-        </ul>
-      </div>
-  
-      <div v-if="result.content.child_links.length" class="mt-2">
-        <strong>Child Links:</strong>
-        <ul class="ml-4 text-sm text-blue-600 list-disc">
-          <li v-for="(link, i) in result.content.child_links" :key="'c' + i">
-            <el-link :href="link" target="_blank">{{ link }}</el-link>
-          </li>
-        </ul>
-      </div>
-    </el-card>
-  </template>
-  
-  <script setup>
-  // eslint-disable-next-line no-undef
-  defineProps({
-    result: Object
-  })
-  </script>
-  
+    </div>
+
+    <div v-if="result.content.parent_links.length" class="mt-4">
+      <strong>Parent Links:</strong>
+      <ul class="ml-4 text-sm text-blue-600 list-disc">
+        <li v-for="(link, i) in result.content.parent_links" :key="'p' + i">
+          <el-link :href="link" target="_blank" class="hover:text-blue-800">{{ link }}</el-link>
+        </li>
+      </ul>
+    </div>
+
+    <div v-if="result.content.child_links.length" class="mt-4">
+      <strong>Child Links:</strong>
+      <ul class="ml-4 text-sm text-blue-600 list-disc">
+        <li v-for="(link, i) in result.content.child_links" :key="'c' + i">
+          <el-link :href="link" target="_blank" class="hover:text-blue-800">{{ link }}</el-link>
+        </li>
+      </ul>
+    </div>
+  </el-card>
+</template>
+
+<script setup>
+// eslint-disable-next-line no-undef
+defineProps({
+  result: Object
+})
+</script>
+
+<style scoped>
+/* Additional custom styles */
+.el-card {
+  background-color: #f9f9f9;
+}
+
+
+.el-link:hover {
+  color: #0073e6;
+}
+</style>

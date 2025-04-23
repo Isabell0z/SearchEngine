@@ -50,7 +50,8 @@ export default {
         const data = await res.json();
         console.log('data sent:', data);
         if (res.ok && data.access_token) {
-          authStore.login();  // Assuming the `login` method updates the Pinia store state
+          authStore.login();
+          authStore.setUsername(username.value); 
           localStorage.setItem('token', data.access_token);
           console.log('Token sent:', localStorage.getItem('token'));
           router.push('/search');
