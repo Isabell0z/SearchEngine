@@ -29,7 +29,8 @@ class Spider:
                     "url": {"type": "keyword"},
                     "title": {"type": "text"},
                     "content": {"type": "text"},
-                    "last_modify_time": {"type": "date"}
+                    "last_modify_time": {"type": "date"},
+                    "size": {"type": "integer"}
                 }
             }
         })
@@ -71,7 +72,8 @@ class Spider:
                     last_modify_time = "1970-01-01T00:00:00Z"  # default value if not available
                 soup = BeautifulSoup(response.text, 'html.parser')
                 title = soup.title.string if soup.title else ''
-                content = soup.get_text()
+                content =soup.body.get_text().replace('\n', '').replace('\r', '')
+                size=response.raw._fp_bytes_read if response.raw._fp_bytes_read else 0 #get size of the page(bytes)
 
                 # not visited and not assigned id
                 if url not in self.url_map:
@@ -83,7 +85,7 @@ class Spider:
                     page_id = self.url_map[url]
                     
                 # store page info in Elasticsearch
-                self.store_page_info(page_id, url, title, content, last_modify_time)
+                self.store_page_info(page_id, url, title, content, last_modify_time,size)
 
                 # find all links on the page
                 links = [link.get('href') for link in soup.find_all('a', href=True)]
@@ -93,13 +95,14 @@ class Spider:
             print(f"Failed to fetch {url}: {e}")
             return None, []
 
-    def store_page_info(self, page_id, url, title, content, last_modify_time):
+    def store_page_info(self, page_id, url, title, content, last_modify_time,size):
         doc = {
             "page_id": page_id,
             "url": url,
             "title": title,
             "content": content,
-            "last_modify_time": last_modify_time
+            "last_modify_time": last_modify_time,
+            "size": size
         }
         self.es.index(index='web_pages', id=page_id, body=doc)
 
