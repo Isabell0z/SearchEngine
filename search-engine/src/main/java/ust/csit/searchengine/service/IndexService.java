@@ -3,12 +3,11 @@ package ust.csit.searchengine.service;
 
 import org.springframework.stereotype.Service;
 import ust.csit.searchengine.dao.EsClient;
-import ust.csit.searchengine.entity.BodyInfo;
-import ust.csit.searchengine.entity.TitleInfo;
-import ust.csit.searchengine.entity.WebPage;
+import ust.csit.searchengine.entity.*;
 import ust.csit.searchengine.utils.StopStemer;
 
 import javax.annotation.Resource;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +21,11 @@ public class IndexService {
     @Resource
     private StopStemer stopStemer;
     
-    private static final String SOURCE_INDEX = "webpages";
+    private static final String SOURCE_INDEX = "web_pages";
+    private static final String WEB_PAGE_INDEX = "web_page_structure";
+    private static final String REVERSE_WEB_PAGE_INDEX = "reverse_web_page_structure";
+
+
     private static final String TITLE_INDEX = "title_index";
     private static final String BODY_INDEX = "body_index";
 
@@ -59,7 +62,7 @@ public class IndexService {
         Map<String, BodyInfo> bodyMap = new HashMap<>();
 
         for (WebPage page : batch) {
-            Integer docId = page.getId();
+            Integer docId = page.getPageId();
 
             // 处理标题
             String processedTitle = stopStemer.removeStopwordAndStem(page.getTitle());
@@ -123,13 +126,30 @@ public class IndexService {
         }
 
 
+        List<TitleIndex> titleIndexList = new ArrayList<>();
+        for (Map.Entry<String, TitleInfo> entry : titleMap.entrySet()) {
+            TitleIndex titleIndex = new TitleIndex();
+            titleIndex.setTerm(entry.getKey());
+            titleIndex.setTitleDocMap(entry.getValue().getTitleDocMap());
+            titleIndexList.add(titleIndex);
+        }
+
+        List<BodyIndex> bodyIndexList = new ArrayList<>();
+        for (Map.Entry<String, BodyInfo> entry : bodyMap.entrySet()) {
+            BodyIndex bodyIndex = new BodyIndex();
+            bodyIndex.setTerm(entry.getKey());
+            bodyIndex.setBodyDocMap(entry.getValue().getBodyDocMap());
+            bodyIndexList.add(bodyIndex);
+        }
+
+
         // 写入新索引
         // 写入titleMap和bodyMap
         try {
             esClient.createIndex(TITLE_INDEX);
             esClient.createIndex(BODY_INDEX);
-            esClient.bulkIndex(TITLE_INDEX, titleMap);
-            esClient.bulkIndex(BODY_INDEX, bodyMap);
+            esClient.bulkIndex(TITLE_INDEX, titleIndexList);
+            esClient.bulkIndex(BODY_INDEX, bodyIndexList);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

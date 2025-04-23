@@ -1,8 +1,12 @@
 package ust.csit.searchengine.entity;
 
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class WebPage {
 
-    private Integer id;
+    private Integer pageId;
 
     private String url;
 
@@ -12,12 +16,14 @@ public class WebPage {
 
     private String lastModifyTime;
 
-    public Integer getId() {
-        return id;
+    private Long size;
+
+    public Integer getPageId() {
+        return pageId;
     }
 
-    public void setId(Integer id) {
-        this.id = id;
+    public void setPageId(Integer pageId) {
+        this.pageId = pageId;
     }
 
     public String getUrl() {
@@ -50,5 +56,13 @@ public class WebPage {
 
     public void setLastModifyTime(String lastModifyTime) {
         this.lastModifyTime = lastModifyTime;
+    }
+
+    public Long getSize() {
+        return size;
+    }
+
+    public void setSize(Long size) {
+        this.size = size;
     }
 }
