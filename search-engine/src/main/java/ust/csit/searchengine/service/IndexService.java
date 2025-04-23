@@ -7,6 +7,7 @@ import ust.csit.searchengine.entity.*;
 import ust.csit.searchengine.utils.StopStemer;
 
 import javax.annotation.Resource;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +32,10 @@ public class IndexService {
 
     private static final int BATCH_SIZE = 100;
 
+
+    private static final Map<String, TitleInfo> titleMap = new HashMap<>();
+    private static final Map<String, BodyInfo> bodyMap = new HashMap<>();
+
     public void buildRevertedIndex() {
         int from = 0;
 
@@ -54,15 +59,19 @@ public class IndexService {
             processBatch(batch);
             from += BATCH_SIZE;
         }
+        try {
+            // 写入索引
+            writeToEs();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void processBatch(List<WebPage> batch) {
 
-        Map<String, TitleInfo> titleMap = new HashMap<>();
-        Map<String, BodyInfo> bodyMap = new HashMap<>();
-
         for (WebPage page : batch) {
             Integer docId = page.getPageId();
+            int maxTf = 0;
 
             // 处理标题
             String processedTitle = stopStemer.removeStopwordAndStem(page.getTitle());
@@ -86,8 +95,10 @@ public class IndexService {
                     Integer tf = titleDocMap.get(docId);
                     if (tf == null) {
                         titleDocMap.put(docId, 1);
+                        maxTf = Math.max(maxTf, 1);
                     } else {
                         titleDocMap.put(docId, tf + 1);
+                        maxTf = Math.max(maxTf, tf + 1);
                     }
                 }
 
@@ -141,18 +152,43 @@ public class IndexService {
             bodyIndex.setBodyDocMap(entry.getValue().getBodyDocMap());
             bodyIndexList.add(bodyIndex);
         }
+    }
 
+    private void writeToEs() throws IOException {
+        // 转换并写入
+        List<TitleIndex> titleIndexList = convertTitleMap();
+        List<BodyIndex> bodyIndexList = convertBodyMap();
 
-        // 写入新索引
-        // 写入titleMap和bodyMap
-        try {
-            esClient.createIndex(TITLE_INDEX);
-            esClient.createIndex(BODY_INDEX);
-            esClient.bulkIndex(TITLE_INDEX, titleIndexList);
-            esClient.bulkIndex(BODY_INDEX, bodyIndexList);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        esClient.createIndex(TITLE_INDEX);
+        esClient.createIndex(BODY_INDEX);
+        esClient.bulkIndex(TITLE_INDEX, titleIndexList);
+        esClient.bulkIndex(BODY_INDEX, bodyIndexList);
+
+        // 清理资源
+        titleMap.clear();
+        bodyMap.clear();
+    }
+
+    private List<TitleIndex> convertTitleMap() {
+        List<TitleIndex> titleIndexList = new ArrayList<>();
+        for (Map.Entry<String, TitleInfo> entry : titleMap.entrySet()) {
+            TitleIndex titleIndex = new TitleIndex();
+            titleIndex.setTerm(entry.getKey());
+            titleIndex.setTitleDocMap(entry.getValue().getTitleDocMap());
+            titleIndexList.add(titleIndex);
         }
+        return titleIndexList;
+    }
+
+    private List<BodyIndex> convertBodyMap() {
+        List<BodyIndex> bodyIndexList = new ArrayList<>();
+        for (Map.Entry<String, BodyInfo> entry : bodyMap.entrySet()) {
+            BodyIndex bodyIndex = new BodyIndex();
+            bodyIndex.setTerm(entry.getKey());
+            bodyIndex.setBodyDocMap(entry.getValue().getBodyDocMap());
+            bodyIndexList.add(bodyIndex);
+        }
+        return bodyIndexList;
     }
 
 }
