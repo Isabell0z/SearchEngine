@@ -1,7 +1,6 @@
 package ust.csit.searchengine.dao;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch.core.*;
 import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
@@ -128,14 +127,11 @@ public class EsClient {
     }
 
     // 批量查询
-    public <T> List<T> search(String index, String queryString, int from, int size, Class<T> clazz) throws IOException {
+    public <T> List<T> search(String index, int from, int size, Class<T> clazz) throws IOException {
         SearchResponse<T> response = client.search(s -> s
                         .index(index)
                         .query(q -> q
-                                .match(m -> m
-                                        .field("content")
-                                        .query(FieldValue.of(queryString))
-                                )
+                                .matchAll(m -> m)
                         )
                         .from(from)
                         .size(size),

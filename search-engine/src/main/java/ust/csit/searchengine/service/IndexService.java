@@ -36,7 +36,6 @@ public class IndexService {
             List<WebPage> batch = null;
             try {
                 batch = esClient.search(SOURCE_INDEX,
-                        "match_all",
                         from,           // 起始位置
                         BATCH_SIZE,     // 每批大小
                         WebPage.class
@@ -60,7 +59,7 @@ public class IndexService {
         Map<String, BodyInfo> bodyMap = new HashMap<>();
 
         for (WebPage page : batch) {
-            Integer docId = page.getPageId();
+            Integer docId = page.getId();
 
             // 处理标题
             String processedTitle = stopStemer.removeStopwordAndStem(page.getTitle());

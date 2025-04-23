@@ -2,7 +2,7 @@ package ust.csit.searchengine.entity;
 
 public class WebPage {
 
-    private Integer pageId;
+    private Integer id;
 
     private String url;
 
@@ -12,12 +12,12 @@ public class WebPage {
 
     private String lastModifyTime;
 
-    public Integer getPageId() {
-        return pageId;
+    public Integer getId() {
+        return id;
     }
 
-    public void setPageId(Integer pageId) {
-        this.pageId = pageId;
+    public void setId(Integer id) {
+        this.id = id;
     }
 
     public String getUrl() {
