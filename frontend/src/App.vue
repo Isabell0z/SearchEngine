@@ -56,9 +56,13 @@ export default {
 </script>
 
 <style scoped>
+:root {
+  --el-header-height: 20px; /* 设置头部的高度为 80px */
+}
 .header-container {
-  padding: 0 20px;
-  background-color: #f5f5f5;
+  padding: 0 0px;
+  margin: 0 20px;
+  height: var(--el-header-height) !important;
 }
 
 .greeting {

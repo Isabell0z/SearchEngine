@@ -43,7 +43,7 @@
           size="small"
           class="mb-1"
         >
-          {{ word }} (frequency: {{ freq }})
+           {{ freq }}
         </el-tag>
       </div>
     </div>

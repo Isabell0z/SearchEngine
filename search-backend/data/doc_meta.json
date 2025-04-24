@@ -6,7 +6,7 @@
     "max_tf": 20,
     "last_modified": 20,
     "size": 1,
-    "keywords": "2",
+    "keywords": ["2"],
     "parent_links": ["1"],
     "child_links": ["1"]
   },
@@ -17,7 +17,7 @@
     "max_tf": 12,
     "last_modified": 20,
     "size": 1,
-    "keywords": "2",
+    "keywords": ["2"],
     "parent_links": ["1"],
     "child_links": ["1"]
   },
@@ -28,7 +28,7 @@
     "max_tf": 10,
     "last_modified": 20,
     "size": 1,
-    "keywords": "2",
+    "keywords": ["2"],
     "parent_links": ["1"],
     "child_links": ["1"]
   }

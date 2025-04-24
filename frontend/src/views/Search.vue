@@ -1,4 +1,27 @@
 <template>
+  <div class="page-layout">
+    <!-- 左侧筛选栏 -->
+    <aside class="sidebar">
+      <h3>Keywords</h3>
+      <div v-for="keyword in allKeywords" :key="keyword">
+        <label>
+          <input
+            type="checkbox"
+            :value="keyword"
+            v-model="selectedKeywords"
+          />
+          {{ keyword }}
+        </label>
+      </div>
+    </aside>
+    <main class="main-content">
+      <button
+    v-show="showBackToTop"
+    class="back-to-top"
+    @click="scrollToTop"
+  >
+    Top
+  </button>
   <div class="max-w-5xl mx-auto py-10 px-6">
     <el-card class="p-6 shadow-lg">
       <h1 class="text-3xl font-semibold text-center mb-6">Search Engine</h1>
@@ -17,6 +40,21 @@
         <el-button type="primary" @click="search"> Search </el-button>
         </el-col>
       </el-row>
+      <div class="sort-buttons">
+        <button
+        :class="{ active: sortBy === 'relevance' }"
+        @click="sortBy = 'relevance'"
+      >
+      Sorted by relevance
+      </button>
+      <button
+        :class="{ active: sortBy === 'credibility' }"
+        @click="sortBy = 'credibility'"
+      >
+      Sorted by authority
+      </button>
+      <p class="result-count"> Total {{ results.length }} results</p>
+    </div>
     </el-card>
     <div v-if="aiResult" class="mt-8">
       <el-card class="p-4 rounded-lg border border-gray-200">
@@ -42,12 +80,15 @@
 
     <el-empty v-else-if="searched" description="No results found." class="mt-10" />
   </div>
+</main>
+</div>
 
 </template>
 
 <script setup>
 import { computed } from 'vue';
-import { ref, onMounted } from 'vue'
+import { watch } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import SearchResult from '@/components/SearchResult.vue'
 const aiResult = ref("AI result");
@@ -58,11 +99,60 @@ const searched = ref(false)
 const history = ref([])
 const itemsPerPage = 10;
 const currentPage = ref(1);
+const sortBy = ref('relevance')
+const allKeywords = computed(() => {
+  const keywordsSet = new Set()  // 使用 Set 去重
+  // 遍历 results 数据，获取每个 result 的 content.keyword
+  results.value.forEach(result => {
+    if (result.content && Array.isArray(result.content.keywords)) {
+      result.content.keywords.forEach(keyword => {
+        keywordsSet.add(keyword)  // 添加到 Set 中，自动去重
+      })
+    }
+  })
+  return Array.from(keywordsSet)  // 将 Set 转换为数组并返回
+})
+watch(results, (newResults) => {
+  console.log("Results updated:", newResults)
+  console.log("All keywords updated:", allKeywords.value)  // 打印新的 allKeywords
+})
+const selectedKeywords = ref([])
+const showBackToTop = ref(false)
+
+const handleScroll = () => {
+  showBackToTop.value = window.scrollY > 300
+}
+
+const scrollToTop = () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll)
+})
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+})
 const paginatedResults = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage;
   const end = start + itemsPerPage;
-  return results.value.slice(start, end);
+  return filteredResults.value.slice(start, end);
 });
+const filteredResults = computed(() => {
+  let filtered = results.value
+
+  if (selectedKeywords.value.length > 0) {
+    filtered = filtered.filter(item =>
+      selectedKeywords.value.every(k => item.content.keywords.includes(k))
+    )
+  }
+
+  if (sortBy.value === 'relevance') {
+    return [...filtered].sort((a, b) => b.relevance - a.relevance)
+  } else {
+    return [...filtered].sort((a, b) => b.credibility - a.credibility)
+  }
+})
 const handlePageChange = (page) => {
   currentPage.value = page;
   window.scrollTo(0, 0);
@@ -143,11 +233,43 @@ const search = async () => {
 </script>
 
 <style scoped>
+.page-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  padding: 0 0px;
+}
+.sidebar {
+  width: 200px;
+  min-width: 180px;
+  padding: 16px;
+  border-right: 1px solid #eee;
+  background-color: #fafafa;
+  font-size: 14px;
+}
+.main-content {
+  flex: 1;
+}
+.sort-buttons {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 1rem;
+}
+
 .search-container {
   display: flex;
   align-items: center;
 }
-
+.result-count {
+  color: gray;
+  font-size: 14px;
+  margin-left: 30px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  margin-bottom: 1rem;
+}
 .search-input {
   flex-grow: 1; /* Allow input to take up remaining space */
   margin-right: 10px; /* Space between input and button */
@@ -160,7 +282,16 @@ const search = async () => {
 .el-autocomplete-suggestion {
   z-index: 9999 !important;
 }
-
+.sort-buttons button {
+  background: none;
+  border: none;
+  font-size: 15px;
+  color: grey;
+  cursor: pointer;
+  margin-right: 12px;
+  padding: 4px 8px;
+  margin-top: 10px;
+}
 </style>
 
 <style scoped>
@@ -169,5 +300,31 @@ const search = async () => {
   display: flex;
   justify-content: center;
   margin-top: 1.5rem;
+}
+
+.sort-buttons button.active {
+  color: black;
+  font-weight: bold;
+}
+
+.back-to-top {
+  position: fixed;
+  bottom: 50px;
+  right: 30px;
+  background-color: #409eff;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  z-index: 999;
+  transition: opacity 0.3s ease;
+}
+
+.back-to-top:hover {
+  background-color: #66b1ff;
 }
 </style>
