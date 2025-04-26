@@ -5,11 +5,12 @@ import ust.csit.searchengine.dao.EsClient;
 import ust.csit.searchengine.entity.MetaDoc;
 
 import javax.annotation.Resource;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static java.lang.Thread.sleep;
 
 @Service
 public class PageRankService {
@@ -22,7 +23,7 @@ public class PageRankService {
     @Resource
     private EsClient esClient;
 
-    public void calculatePageRank() throws IOException {
+    public void calculatePageRank() throws Exception {
         // 1. 获取所有文档
         List<MetaDoc> docs = getAllDocs();
         int n = docs.size();
@@ -91,9 +92,10 @@ public class PageRankService {
     }
 
 
-    private List<MetaDoc> getAllDocs() throws IOException {
+    private List<MetaDoc> getAllDocs() throws Exception {
+        sleep(1000); // 等待索引创建完成
         int from = 0;
-        int size = 100;
+        int size = 500;
         List<MetaDoc> allDocs = new ArrayList<>();
 
         while (true) {
