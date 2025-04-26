@@ -34,7 +34,7 @@ public class IndexService {
     private static final String BODY_INDEX = "body_index";
     private static final String META_DOC_INDEX = "meta_doc";
 
-    private static final int BATCH_SIZE = 100;
+    private static final int BATCH_SIZE = 500;
 
 
     private final Map<String, TitleInfo> titleMap = new HashMap<>();
@@ -56,7 +56,7 @@ public class IndexService {
 
             // 写入索引
             writeInvertedIndexToEs();
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
@@ -121,6 +121,8 @@ public class IndexService {
 
     private void processBatch(List<WebPage> batch) {
 
+        List<MetaDoc> metaDocs = new ArrayList<>();
+
         for (WebPage page : batch) {
 
             Integer docId = page.getPageId();
@@ -155,6 +157,32 @@ public class IndexService {
                     }
                 }
 
+                // 处理 bi-gram
+                if (i < titleWords.length - 1) {
+                    String nextTerm = titleWords[i + 1];
+                    if (!nextTerm.isEmpty()) {
+                        String biGramTerm = term + "_" + nextTerm;
+                        TitleInfo biTitleInfo = titleMap.get(biGramTerm);
+                        // term not exist
+                        if (biTitleInfo == null) {
+                            biTitleInfo = new TitleInfo();
+                            Map<Integer, Integer> titleDocMap = new HashMap<>();
+                            titleDocMap.put(docId, 1);
+                            biTitleInfo.setTitleDocMap(titleDocMap);
+                            titleMap.put(biGramTerm, biTitleInfo);
+                        } else {
+                            // term exist
+                            Map<Integer, Integer> titleDocMap = biTitleInfo.getTitleDocMap();
+                            Integer tf = titleDocMap.get(docId);
+                            if (tf == null) {
+                                titleDocMap.put(docId, 1);
+                            } else {
+                                titleDocMap.put(docId, tf + 1);
+                            }
+                        }
+                    }
+                }
+
             }
 
 
@@ -186,33 +214,67 @@ public class IndexService {
                         maxTf = Math.max(maxTf, tf + 1);
                     }
                 }
+
+                // 处理 bi-gram
+                if (i < bodyWords.length - 1) {
+                    String nextTerm = bodyWords[i + 1];
+                    if (!nextTerm.isEmpty()) {
+                        String biGramTerm = term + "_" + nextTerm;
+                        BodyInfo biBodyInfo = bodyMap.get(biGramTerm);
+                        // term not exist
+                        if (biBodyInfo == null) {
+                            biBodyInfo = new BodyInfo();
+                            Map<Integer, Integer> bodyDocMap = new HashMap<>();
+                            bodyDocMap.put(docId, 1);
+                            biBodyInfo.setBodyDocMap(bodyDocMap);
+                            bodyMap.put(biGramTerm, biBodyInfo);
+                        } else {
+                            // term exist
+                            Map<Integer, Integer> bodyDocMap = biBodyInfo.getBodyDocMap();
+                            Integer tf = bodyDocMap.get(docId);
+                            if (tf == null) {
+                                bodyDocMap.put(docId, 1);
+                            } else {
+                                bodyDocMap.put(docId, tf + 1);
+                            }
+                        }
+                    }
+                }
             }
+
             // 处理metaData
-            processMetaData(page, maxTf);
+            MetaDoc metaDoc = createMetaDoc(page, maxTf);
+            metaDocs.add(metaDoc);
 
+        }
+        // 批量写入 MetaDoc
+        try {
+            esClient.createIndex(META_DOC_INDEX);
+            esClient.bulkIndexMetaDoc(META_DOC_INDEX, metaDocs);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
 
 
-        List<TitleIndex> titleIndexList = new ArrayList<>();
-        for (Map.Entry<String, TitleInfo> entry : titleMap.entrySet()) {
-            TitleIndex titleIndex = new TitleIndex();
-            titleIndex.setTerm(entry.getKey());
-            titleIndex.setTitleDocMap(entry.getValue().getTitleDocMap());
-            titleIndexList.add(titleIndex);
-        }
 
-        List<BodyIndex> bodyIndexList = new ArrayList<>();
-        for (Map.Entry<String, BodyInfo> entry : bodyMap.entrySet()) {
-            BodyIndex bodyIndex = new BodyIndex();
-            bodyIndex.setTerm(entry.getKey());
-            bodyIndex.setBodyDocMap(entry.getValue().getBodyDocMap());
-            bodyIndexList.add(bodyIndex);
-        }
+//        List<TitleIndex> titleIndexList = new ArrayList<>();
+//        for (Map.Entry<String, TitleInfo> entry : titleMap.entrySet()) {
+//            TitleIndex titleIndex = new TitleIndex();
+//            titleIndex.setTerm(entry.getKey());
+//            titleIndex.setTitleDocMap(entry.getValue().getTitleDocMap());
+//            titleIndexList.add(titleIndex);
+//        }
+//
+//        List<BodyIndex> bodyIndexList = new ArrayList<>();
+//        for (Map.Entry<String, BodyInfo> entry : bodyMap.entrySet()) {
+//            BodyIndex bodyIndex = new BodyIndex();
+//            bodyIndex.setTerm(entry.getKey());
+//            bodyIndex.setBodyDocMap(entry.getValue().getBodyDocMap());
+//            bodyIndexList.add(bodyIndex);
+//        }
     }
 
-    private void processMetaData(WebPage page, int maxTf) {
-        // 处理元数据
-        List<MetaDoc> metaDocs = new ArrayList<>();
+    private MetaDoc createMetaDoc(WebPage page, int maxTf) {
         MetaDoc metaDoc = new MetaDoc();
         metaDoc.setPageId(page.getPageId());
         metaDoc.setUrl(page.getUrl());
@@ -222,15 +284,7 @@ public class IndexService {
         metaDoc.setMaxTf(maxTf);
         metaDoc.setParentLinks(parentMap.get(page.getPageId()));
         metaDoc.setChildLinks(childMap.get(page.getPageId()));
-
-        metaDocs.add(metaDoc);
-        // 批量写入ES
-        try {
-            esClient.createIndex(META_DOC_INDEX);
-            esClient.bulkIndexMetaDoc(META_DOC_INDEX, metaDocs);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return metaDoc;
     }
 
     private void writeInvertedIndexToEs() throws IOException {
