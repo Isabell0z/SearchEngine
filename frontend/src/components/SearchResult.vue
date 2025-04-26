@@ -15,14 +15,14 @@
     <el-col :span="4" class="text-right">
       <!-- Score (right side) -->
       <span class="text-xs font-thin text-gray-300 ml-auto">
-         Score: {{ result.score.toFixed(2) }}
+         Score: {{ result.score }}
       </span>
     </el-col>
   </el-row>
   <el-row :gutter="20" class="mb-6">
     <el-col :span="20" class="text-right">
       <span class="text-xs font-thin text-gray-300 ml-auto">
-        Last modified: {{ result.content.last_modified || 'Unknown date' }}
+        Last modified: {{  formatTime(result.content.last_modify_time) || 'Unknown date' }}
       </span>
     </el-col>
     <el-col :span="4" class="text-right">
@@ -73,6 +73,15 @@
 defineProps({
   result: Object
 })
+function formatTime(isoTime) {
+    const date = new Date(isoTime);
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
 </script>
 
 <style scoped>

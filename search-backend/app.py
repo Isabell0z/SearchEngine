@@ -49,6 +49,7 @@ def search():
                 (current_user, query)
             )
             db.commit()
+    return jsonify(engine.search(query))
 
 
 
