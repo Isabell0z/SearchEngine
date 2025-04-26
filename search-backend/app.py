@@ -50,7 +50,7 @@ def search():
             )
             db.commit()
     result = engine.search(query)
-    print("user:",current_user,"resultL",result)
+    print("user:",current_user,"result:",result)
     return jsonify(result)
 
 

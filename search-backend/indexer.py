@@ -19,8 +19,13 @@ def remove_stopwords(text: str) -> list:
 def stem(words: list) -> list:
     return [stemmer.stem(word) for word in words]
 
-# 提取带双引号的短语，例如 "hong kong" universities
-def extract_phrases(query: str) -> list:
-    phrase_pattern = r'"(.*?)"'
-    phrases = re.findall(phrase_pattern, query)
-    return [phrase.lower() for phrase in phrases]
+# 提取bigram
+def extract_bigrams(query: str) -> list:
+    query = query.lower()
+    words = re.findall(r'\w+', query)
+    
+    words = [word for word in words if word not in stop_words]
+    words = [stemmer.stem(word) for word in words]
+    
+    bigrams = [f'{words[i]}_{words[i+1]}' for i in range(len(words)-1)]
+    return bigrams
