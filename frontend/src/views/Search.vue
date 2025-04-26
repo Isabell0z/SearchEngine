@@ -104,13 +104,17 @@ const allKeywords = computed(() => {
   const keywordsSet = new Set()  // 使用 Set 去重
   // 遍历 results 数据，获取每个 result 的 content.keyword
   results.value.forEach(result => {
-    if (result.content && Array.isArray(result.content.keywords)) {
-      result.content.keywords.forEach(keyword => {
-        keywordsSet.add(keyword)  // 添加到 Set 中，自动去重
+  if (result.content && Array.isArray(result.content.term_freq_list)) {
+    result.content.term_freq_list.forEach(keyword => {
+      if (keyword.term) {
+        keywordsSet.add(keyword.term)  // 只添加 term 字段到 Set 中，自动去重
+      }
       })
     }
   })
-  return Array.from(keywordsSet)  // 将 Set 转换为数组并返回
+  const sortedKeywords = [...keywordsSet].sort()
+
+  return Array.from(sortedKeywords)  // 将 Set 转换为数组并返回
 })
 watch(results, (newResults) => {
   console.log("Results updated:", newResults)
@@ -143,9 +147,11 @@ const filteredResults = computed(() => {
 
   if (selectedKeywords.value.length > 0) {
     filtered = filtered.filter(item =>
-      selectedKeywords.value.every(k => item.content.keywords.includes(k))
-    )
-  }
+      selectedKeywords.value.every(k =>
+        item.content.term_freq_list.some(termObj => termObj.term === k)
+      )
+  )
+}
 
   if (sortBy.value === 'relevance') {
     return [...filtered].sort((a, b) => b.score - a.score)

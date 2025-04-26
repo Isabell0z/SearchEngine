@@ -134,7 +134,7 @@ class SearchEngine:
         }
         indexs = es.search(index="meta_doc", body=body)
         dot = 0
-        doc_len = indexs['hits']['hits'][0]['_source']['size']  ######????
+        doc_len = indexs['hits']['hits'][0]['_source']['length']  ######????
         max_tf = indexs['hits']['hits'][0]['_source']['max_tf']
         for term in terms.keys():
             tf = self._get_tf(term, doc)

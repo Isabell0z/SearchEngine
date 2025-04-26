@@ -3,7 +3,7 @@
   <el-card shadow="hover" class="p-4 rounded-lg border border-gray-200 w-full">
   <template #header>
     <el-row :gutter="20" class="mb-6">
-    <el-col :span="20">
+    <el-col :span="16">
       <el-link
         :href="result.content.url"
         target="_blank"
@@ -15,40 +15,41 @@
     <el-col :span="4" class="text-right">
       <!-- Score (right side) -->
       <span class="text-xs font-thin text-gray-300 ml-auto">
-         Score: {{ result.score }}
+         Score: {{ result.score.toFixed(4) }}
+      </span>
+    </el-col>
+    <el-col :span="4" class="text-right">
+      <span class="text-xs font-thin text-gray-300 ml-auto">
+        Page-rank: {{ result.content.page_rank.toFixed(4)}}
       </span>
     </el-col>
   </el-row>
   <el-row :gutter="20" class="mb-6">
-    <el-col :span="16" class="text-right">
+    <el-col :span="20" class="text-right">
       <span class="text-xs font-thin text-gray-300 ml-auto">
         Last modified: {{  formatTime(result.content.last_modify_time) || 'Unknown date' }}
       </span>
     </el-col>
     <el-col :span="4" class="text-right">
       <span class="text-xs font-thin text-gray-300 ml-auto">
-        Size: {{ result.content.size ? result.content.size + ' chars' : 'Unknown size' }}
-      </span>
-    </el-col>
-    <el-col :span="4" class="text-right">
-      <span class="text-xs font-thin text-gray-300 ml-auto">
-        Page-rank: {{ result.content.page_rank }}
+        Size: {{ result.content.size ? result.content.size + ' Bytes' : 'Unknown size' }}
       </span>
     </el-col>
   </el-row>
   </template>
 
+  
     <div class="mb-4 text-sm text-gray-800">
       <strong>Top Keywords:</strong>
       <div class="flex flex-wrap gap-2">
         <el-tag
-          v-for="(freq, word) in result.content.keywords"
-          :key="word"
+          v-for="(item, i) in result.content.term_freq_list"
+          :key="i"
           type="success"
           size="small"
           class="mb-1"
         >
-           {{ freq }}
+          {{ item.term }}
         </el-tag>
       </div>
     </div>
