@@ -50,13 +50,53 @@ class SearchEngine:
             page_id = source["page_id"]
             pageid_to_content[page_id] = source            
         for doc, score in scores[:50]:
-            content = pageid_to_content.get(int(doc))  
-            if content:  
+            content = pageid_to_content.get(int(doc)) 
+            if content:
+                childlist = content.get("child_links", [])
+                if childlist:
+                    body = {
+                        "query": {
+                            "terms": {
+                                "page_id": childlist
+                            }
+                        }
+                    }
+                    resp = es.search(index="meta_doc", body=body, size=50)
+                    content['child_links'] = [
+                        {
+                            'title': hit["_source"].get("title", ""),
+                            'link': hit["_source"].get("url", "")
+                        }
+                        for hit in resp["hits"]["hits"]
+                    ]
+                else:
+                    content['child_links'] = []
+
+       
+                parentlist = content.get("parent_links", [])
+                if parentlist:
+                    body = {
+                        "query": {
+                            "terms": {
+                                "page_id": parentlist
+                            }
+                        }
+                    }
+                    resp = es.search(index="meta_doc", body=body, size=50)
+                    content['parent_links'] = [
+                        {
+                            'title': hit["_source"].get("title", ""),
+                            'link': hit["_source"].get("url", "")
+                        }
+                        for hit in resp["hits"]["hits"]
+                    ]
+                else:
+                    content['parent_links'] = []
+
                 top_docs.append({
                     "content": content,
                     "score": score
-                })
-                
+                })       
         return top_docs
 
     def _build_idf_vector(self, terms):

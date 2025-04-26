@@ -30,7 +30,7 @@ def search():
 
     # 获取当前用户
     current_user = get_jwt_identity()
-    print("user:",current_user)
+
     data = request.json
     if not data:
         return jsonify({'msg': 'Missing JSON body'}), 400
@@ -49,7 +49,9 @@ def search():
                 (current_user, query)
             )
             db.commit()
-    return jsonify(engine.search(query))
+    result = engine.search(query)
+    print("user:",current_user,"resultL",result)
+    return jsonify(result)
 
 
 

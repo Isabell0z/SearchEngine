@@ -148,9 +148,9 @@ const filteredResults = computed(() => {
   }
 
   if (sortBy.value === 'relevance') {
-    return [...filtered].sort((a, b) => b.relevance - a.relevance)
+    return [...filtered].sort((a, b) => b.score - a.score)
   } else {
-    return [...filtered].sort((a, b) => b.credibility - a.credibility)
+    return [...filtered].sort((a, b) => b.content.page_rank - a.content.page_rank)
   }
 })
 const handlePageChange = (page) => {
@@ -168,7 +168,6 @@ const getSuggestions = (queryString, cb) => {
     )
   }
 
-  // 转换为 Element Plus 可识别格式
   const formatted = suggestions.map(item => ({ value: item }))
   cb(formatted)
 }
