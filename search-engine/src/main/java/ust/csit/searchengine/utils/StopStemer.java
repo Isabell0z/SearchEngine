@@ -50,7 +50,7 @@ public class StopStemer {
         StringBuilder result = new StringBuilder();
 
         // 只保留英文字母和空格
-        String cleanedText = text.replaceAll("[^a-zA-Z\\s]", "").toLowerCase();
+        String cleanedText = text.replaceAll("[^a-zA-Z\\s]", " ").toLowerCase();
         String[] words = cleanedText.split("\\s+");
 
         for (String word : words) {

@@ -26,7 +26,6 @@ public class IndexServiceTest {
     @Test
     public void testBuildRevertedIndex() {
 
-
         indexService.buildRevertedIndex();
 
     }

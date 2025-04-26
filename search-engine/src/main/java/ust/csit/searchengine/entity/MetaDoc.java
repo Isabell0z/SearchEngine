@@ -26,6 +26,10 @@ public class MetaDoc {
 
     private Double pageRank;
 
+    private Integer length;
+
+    private List<TermFreq> termFreqList;
+
     public Integer getPageId() {
         return pageId;
     }
@@ -96,5 +100,21 @@ public class MetaDoc {
 
     public void setPageRank(Double pageRank) {
         this.pageRank = pageRank;
+    }
+
+    public Integer getLength() {
+        return length;
+    }
+
+    public void setLength(Integer length) {
+        this.length = length;
+    }
+
+    public List<TermFreq> getTermFreqList() {
+        return termFreqList;
+    }
+
+    public void setTermFreqList(List<TermFreq> termFreqList) {
+        this.termFreqList = termFreqList;
     }
 }

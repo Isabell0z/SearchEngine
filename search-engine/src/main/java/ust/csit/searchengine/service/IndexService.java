@@ -8,10 +8,7 @@ import ust.csit.searchengine.utils.StopStemer;
 
 import javax.annotation.Resource;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class IndexService {
@@ -187,6 +184,8 @@ public class IndexService {
 
 
             // 处理正文
+            PriorityQueue<TermFreq> priorityQueue = new PriorityQueue<>(10); // 小顶堆保存top10
+            Map<String, Integer> termFreqMap = new HashMap<>(); // 临时统计当前文档term频率
             String processedBody = stopStemer.removeStopwordAndStem(page.getContent());
             String[] bodyWords = processedBody.split("\\s+");
             for (int i = 0; i < bodyWords.length; i++) {
@@ -194,6 +193,10 @@ public class IndexService {
                 if (term.isEmpty()) {
                     continue;
                 }
+
+                // 更新词频统计
+                termFreqMap.merge(term, 1, Integer::sum);
+
                 BodyInfo bodyInfo = bodyMap.get(term);
                 // term not exist
                 if (bodyInfo == null) {
@@ -241,9 +244,23 @@ public class IndexService {
                     }
                 }
             }
+            termFreqMap.forEach((t, freq) -> {
+                if (priorityQueue.size() < 10) {
+                    priorityQueue.offer(new TermFreq(t, freq));
+                } else if (freq > priorityQueue.peek().getFrequency()) {
+                    priorityQueue.poll();
+                    priorityQueue.offer(new TermFreq(t, freq));
+                }
+            });
+            // 取出 top 10 词
+            List<TermFreq> top10Terms = new ArrayList<>();
+            while (!priorityQueue.isEmpty()) {
+                top10Terms.add(0, priorityQueue.poll()); // 从头部插入，实现降序
+            }
+
 
             // 处理metaData
-            MetaDoc metaDoc = createMetaDoc(page, maxTf);
+            MetaDoc metaDoc = createMetaDoc(page, maxTf, bodyWords.length, top10Terms);
             metaDocs.add(metaDoc);
 
         }
@@ -255,26 +272,9 @@ public class IndexService {
             throw new RuntimeException(e);
         }
 
-
-
-//        List<TitleIndex> titleIndexList = new ArrayList<>();
-//        for (Map.Entry<String, TitleInfo> entry : titleMap.entrySet()) {
-//            TitleIndex titleIndex = new TitleIndex();
-//            titleIndex.setTerm(entry.getKey());
-//            titleIndex.setTitleDocMap(entry.getValue().getTitleDocMap());
-//            titleIndexList.add(titleIndex);
-//        }
-//
-//        List<BodyIndex> bodyIndexList = new ArrayList<>();
-//        for (Map.Entry<String, BodyInfo> entry : bodyMap.entrySet()) {
-//            BodyIndex bodyIndex = new BodyIndex();
-//            bodyIndex.setTerm(entry.getKey());
-//            bodyIndex.setBodyDocMap(entry.getValue().getBodyDocMap());
-//            bodyIndexList.add(bodyIndex);
-//        }
     }
 
-    private MetaDoc createMetaDoc(WebPage page, int maxTf) {
+    private MetaDoc createMetaDoc(WebPage page, int maxTf, int length, List<TermFreq> top10Terms) {
         MetaDoc metaDoc = new MetaDoc();
         metaDoc.setPageId(page.getPageId());
         metaDoc.setUrl(page.getUrl());
@@ -284,6 +284,8 @@ public class IndexService {
         metaDoc.setMaxTf(maxTf);
         metaDoc.setParentLinks(parentMap.get(page.getPageId()));
         metaDoc.setChildLinks(childMap.get(page.getPageId()));
+        metaDoc.setLength(length);
+        metaDoc.setTermFreqList(new ArrayList<>(top10Terms));
         return metaDoc;
     }
 
