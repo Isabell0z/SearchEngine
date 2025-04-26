@@ -183,7 +183,9 @@ class Spider:
             print(hit['_source'])
 
 
+
 if __name__ == "__main__":
+#def run():
     start_url = 'https://www.cse.ust.hk/~kwtleung/COMP4321/testpage.htm'
     max_pages = 300
     spider = Spider(start_url, max_pages)

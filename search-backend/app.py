@@ -1,11 +1,15 @@
 from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import verify_jwt_in_request
 from search_engine import SearchEngine
 from flask_cors import CORS
 import mysql.connector
+from elasticsearch import Elasticsearch
 
 
 app = Flask(__name__)
+es = Elasticsearch("http://localhost:9200")
+
 CORS(app)
 CORS(app, resources={r"/search": {"origins": "http://127.0.0.1:8080"}})
 CORS(app, origins="http://127.0.0.1:8080")
@@ -21,10 +25,8 @@ db = mysql.connector.connect(
 cursor = db.cursor(dictionary=True)
 
 @app.route('/search', methods=['POST'])
-@jwt_required()
 def search():
-    auth_header = request.headers.get('Authorization')
-    print("Authorization Header:", auth_header)
+    verify_jwt_in_request(optional=True)
 
     # 获取当前用户
     current_user = get_jwt_identity()
@@ -35,9 +37,23 @@ def search():
     query= data.get('data')
     if not query:
         return jsonify({'msg': 'Missing query data'}), 400
-    print(query)
-    cursor.execute("INSERT INTO search_log (username, query) VALUES (%s, %s)", (current_user, query))
-    db.commit()
+    if current_user:
+        cursor.execute(
+            "SELECT 1 FROM search_log WHERE username = %s AND query = %s LIMIT 1",
+            (current_user, query)
+        )
+        exists = cursor.fetchone()
+        if not exists:
+            cursor.execute(
+                "INSERT INTO search_log (username, query) VALUES (%s, %s)",
+                (current_user, query)
+            )
+            db.commit()
+
+
+
+
+
     results = engine.search(query)
     print({"user": current_user, "result": results})
     return results
@@ -47,10 +63,8 @@ def login():
     data = request.json
     username = data.get('username')
     password = data.get('password')
-    print("user:",username,password)
     cursor.execute("SELECT * FROM users WHERE username = %s AND password = %s", (username, password))
     user = cursor.fetchone()
-    print(user)
     if user:
         token = create_access_token(identity=username)  # 存 ID 也可以存 username
         print("Generated JWT Token:", token)
