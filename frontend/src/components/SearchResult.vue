@@ -20,7 +20,7 @@
     </el-col>
     <el-col :span="4" class="text-right">
       <span class="text-xs font-thin text-gray-300 ml-auto">
-        Page-rank: {{ result.content.page_rank.toFixed(4)}}
+        Pagerank: {{ result.content.page_rank.toFixed(4)}}
       </span>
     </el-col>
   </el-row>

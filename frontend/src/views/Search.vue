@@ -53,7 +53,7 @@
       >
       Sorted by authority
       </button>
-      <p class="result-count"> Total {{ results.length }} results</p>
+      <p class="result-count">Total {{ results.length }} results</p>
     </div>
     </el-card>
     <div v-if="aiResult" class="mt-8">
@@ -101,19 +101,27 @@ const itemsPerPage = 10;
 const currentPage = ref(1);
 const sortBy = ref('relevance')
 const allKeywords = computed(() => {
-  const keywordsSet = new Set()  // 使用 Set 去重
-  // 遍历 results 数据，获取每个 result 的 content.keyword
-  results.value.forEach(result => {
-  if (result.content && Array.isArray(result.content.term_freq_list)) {
-    result.content.term_freq_list.forEach(keyword => {
-      if (keyword.term) {
-        keywordsSet.add(keyword.term)  // 只添加 term 字段到 Set 中，自动去重
-      }
-      })
-    }
-  })
-  const sortedKeywords = [...keywordsSet].sort()
+  const keywordFreqMap = new Map();
 
+  // 统计所有 term 的 frequency
+  results.value.forEach(result => {
+    if (result.content && Array.isArray(result.content.term_freq_list)) {
+      result.content.term_freq_list.forEach(keyword => {
+        if (keyword.term) {
+          const currentFreq = keywordFreqMap.get(keyword.term) || 0;
+          keywordFreqMap.set(keyword.term, currentFreq + (keyword.frequency || 0));
+        }
+      });
+    }
+  });
+
+  // 排序，取前 10 个高频关键词
+  const topKeywords = Array.from(keywordFreqMap.entries())
+    .sort((a, b) => b[1] - a[1]) // 按 frequency 降序
+    .slice(0, 10)
+    .map(([term, _]) => term);   // 只要 term，不要频率
+
+  const sortedKeywords = [...topKeywords].sort()
   return Array.from(sortedKeywords)  // 将 Set 转换为数组并返回
 })
 watch(results, (newResults) => {
@@ -265,6 +273,11 @@ const search = async () => {
 .search-container {
   display: flex;
   align-items: center;
+}
+.sort-buttons .result-count {
+  margin-left: auto; /* 把结果数量挤到最右边 */
+  font-size: inherit;
+  color: #555;
 }
 .result-count {
   color: gray;

@@ -19,7 +19,7 @@
         <el-form-item>
         
             <el-col :span="24">
-              <el-button type="primary" @click="handleRegister" class="button">Registe</el-button>
+              <el-button type="primary" @click="handleRegister" class="button">Register</el-button>
             </el-col>
           
           <el-button type="text" @click="goToSearch" class="back-to-search">Back to search engine</el-button>
