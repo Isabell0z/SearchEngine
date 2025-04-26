@@ -14,11 +14,13 @@ import org.apache.http.HttpHost;
 import org.elasticsearch.client.RestClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
+import ust.csit.searchengine.entity.MetaDoc;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Repository
 public class EsClient {
@@ -93,21 +95,20 @@ public class EsClient {
         );
     }
 
-    public <T> BulkResponse bulkIndex(String index, T document) throws IOException {
+    public void bulkIndexMetaDoc(String index, List<MetaDoc> documents) throws IOException {
         List<BulkOperation> operations = new ArrayList<>();
-
-        operations.add(BulkOperation.of(o -> o
-                .index(i -> i
-                        .document(document)
-                        .index(index)
-                )
-        ));
-
-
-        return client.bulk(b -> b
-                .operations(operations)
-        );
+        for (MetaDoc doc : documents) {
+            operations.add(BulkOperation.of(o -> o
+                    .index(i -> i
+                            .id(String.valueOf(doc.getPageId()))
+                            .document(doc)
+                            .index(index)
+                    )
+            ));
+        }
+        client.bulk(b -> b.operations(operations));
     }
+
 
     // 单条查询
     public <T> T get(String index, String id, Class<T> clazz) throws IOException {
@@ -134,5 +135,36 @@ public class EsClient {
         List<T> results = new ArrayList<>();
         response.hits().hits().forEach(hit -> results.add(hit.source()));
         return results;
+    }
+
+    // 批量更新
+    public <T> void bulkUpdate(String index, Map<String, T> idDocMap) throws IOException {
+        List<BulkOperation> operations = new ArrayList<>();
+
+        for (Map.Entry<String, T> entry : idDocMap.entrySet()) {
+            operations.add(BulkOperation.of(o -> o
+                    .update(u -> u
+                            .index(index)
+                            .id(entry.getKey())
+                            .action(a -> a.doc(entry.getValue()))
+                    )
+            ));
+        }
+    }
+
+    public <T> BulkResponse bulkPartialUpdate(String index, Map<String, Map<String, T>> idFieldMap) throws IOException {
+        List<BulkOperation> operations = new ArrayList<>();
+
+        for (Map.Entry<String, Map<String, T>> entry : idFieldMap.entrySet()) {
+            operations.add(BulkOperation.of(o -> o
+                    .update(u -> u
+                            .index(index)
+                            .id(entry.getKey())
+                            .action(a -> a.doc(entry.getValue()))
+                    )
+            ));
+        }
+
+        return client.bulk(b -> b.operations(operations));
     }
 }

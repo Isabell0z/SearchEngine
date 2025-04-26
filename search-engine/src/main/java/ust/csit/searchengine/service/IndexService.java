@@ -22,6 +22,9 @@ public class IndexService {
     @Resource
     private StopStemer stopStemer;
 
+    @Resource
+    private PageRankService pageRankService;
+
     private static final String SOURCE_INDEX = "web_pages";
     private static final String LINK_INDEX = "web_page_structure";
     private static final String REVERSE_LINK_INDEX = "reverse_web_page_structure";
@@ -41,14 +44,16 @@ public class IndexService {
     private final Map<Integer, List<Integer>> childMap = new HashMap<>();   // pageId -> childLinks
 
     public void buildRevertedIndex() {
-
-        // 获取父子链接
-        getLinks();
-
-        // 分批获取所有文档
-        getAllDocuments();
-
         try {
+            // 获取父子链接
+            getLinks();
+
+            // 分批获取所有文档
+            getAllDocuments();
+
+            // 计算 PageRank
+            pageRankService.calculatePageRank();
+
             // 写入索引
             writeInvertedIndexToEs();
         } catch (IOException e) {
@@ -222,7 +227,7 @@ public class IndexService {
         // 批量写入ES
         try {
             esClient.createIndex(META_DOC_INDEX);
-            esClient.bulkIndex(META_DOC_INDEX, metaDocs);
+            esClient.bulkIndexMetaDoc(META_DOC_INDEX, metaDocs);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

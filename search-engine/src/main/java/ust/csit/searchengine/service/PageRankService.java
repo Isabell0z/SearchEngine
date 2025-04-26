@@ -13,6 +13,7 @@ import java.util.Map;
 
 @Service
 public class PageRankService {
+    private static final String META_DOC_INDEX = "meta_doc";
 
     private static final double DAMPING_FACTOR = 0.85; // 阻尼系数
     private static final double EPSILON = 1e-8;        // 收敛阈值
@@ -23,7 +24,7 @@ public class PageRankService {
 
     public void calculatePageRank() throws IOException {
         // 1. 获取所有文档
-        List<MetaDoc> docs = new ArrayList<>();
+        List<MetaDoc> docs = getAllDocs();
         int n = docs.size();
 
         // 2. 初始化 PageRank 值
@@ -75,17 +76,35 @@ public class PageRankService {
         }
 
         // 4. 更新文档的 PageRank 值
+        Map<String, Map<String, Object>> updates = new HashMap<>();
         for (MetaDoc doc : docs) {
-            doc.setPageRank(pageRanks.get(doc.getPageId()));
+            Map<String, Object> fields = new HashMap<>();
+            fields.put("page_rank", pageRanks.get(doc.getPageId()));
+            updates.put(String.valueOf(doc.getPageId()), fields);
+
         }
 
         // 5. 批量更新 ES
-        updatePageRanks(docs);
+        esClient.bulkPartialUpdate(META_DOC_INDEX, updates);
+
+
     }
 
 
+    private List<MetaDoc> getAllDocs() throws IOException {
+        int from = 0;
+        int size = 100;
+        List<MetaDoc> allDocs = new ArrayList<>();
 
-    private void updatePageRanks(List<MetaDoc> docs) throws IOException {
-        esClient.bulkIndex("meta_docs", docs);
+        while (true) {
+            List<MetaDoc> batch = esClient.search(META_DOC_INDEX, from, size, MetaDoc.class);
+            if (batch.isEmpty()) {
+                break;
+            }
+            allDocs.addAll(batch);
+            from += size;
+        }
+
+        return allDocs;
     }
 }
