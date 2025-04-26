@@ -15,31 +15,84 @@ import java.util.Map;
 
 @Service
 public class IndexService {
-    
+
     @Resource
     private EsClient esClient;
 
     @Resource
     private StopStemer stopStemer;
-    
+
     private static final String SOURCE_INDEX = "web_pages";
-    private static final String WEB_PAGE_INDEX = "web_page_structure";
-    private static final String REVERSE_WEB_PAGE_INDEX = "reverse_web_page_structure";
+    private static final String LINK_INDEX = "web_page_structure";
+    private static final String REVERSE_LINK_INDEX = "reverse_web_page_structure";
 
 
     private static final String TITLE_INDEX = "title_index";
     private static final String BODY_INDEX = "body_index";
+    private static final String META_DOC_INDEX = "meta_doc";
 
     private static final int BATCH_SIZE = 100;
 
 
-    private static final Map<String, TitleInfo> titleMap = new HashMap<>();
-    private static final Map<String, BodyInfo> bodyMap = new HashMap<>();
+    private final Map<String, TitleInfo> titleMap = new HashMap<>();
+    private final Map<String, BodyInfo> bodyMap = new HashMap<>();
+
+    private final Map<Integer, List<Integer>> parentMap = new HashMap<>();  // pageId -> parentLinks
+    private final Map<Integer, List<Integer>> childMap = new HashMap<>();   // pageId -> childLinks
 
     public void buildRevertedIndex() {
-        int from = 0;
+
+        // 获取父子链接
+        getLinks();
 
         // 分批获取所有文档
+        getAllDocuments();
+
+        try {
+            // 写入索引
+            writeInvertedIndexToEs();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void getLinks() {
+        int from = 0;
+        while (true) {
+            List<WebPageStructure> structures = null;
+            try {
+                structures = esClient.search(
+                        LINK_INDEX,
+                        from,
+                        BATCH_SIZE,
+                        WebPageStructure.class
+                );
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            if (structures.isEmpty()) {
+                break;
+            }
+
+            // 构建父子关系映射
+            for (WebPageStructure structure : structures) {
+                int parentId = structure.getParentPageId();
+                int childId = structure.getChildPageId();
+
+                // 添加子链接
+                childMap.computeIfAbsent(parentId, k -> new ArrayList<>()).add(childId);
+
+                // 添加父链接
+                parentMap.computeIfAbsent(childId, k -> new ArrayList<>()).add(parentId);
+            }
+
+            from += BATCH_SIZE;
+        }
+    }
+
+    private void getAllDocuments() {
+        int from = 0;
         while (true) {
             List<WebPage> batch = null;
             try {
@@ -59,17 +112,12 @@ public class IndexService {
             processBatch(batch);
             from += BATCH_SIZE;
         }
-        try {
-            // 写入索引
-            writeToEs();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private void processBatch(List<WebPage> batch) {
 
         for (WebPage page : batch) {
+
             Integer docId = page.getPageId();
             int maxTf = 0;
 
@@ -127,12 +175,15 @@ public class IndexService {
                     Integer tf = bodyDocMap.get(docId);
                     if (tf == null) {
                         bodyDocMap.put(docId, 1);
+                        maxTf = Math.max(maxTf, 1);
                     } else {
                         bodyDocMap.put(docId, tf + 1);
+                        maxTf = Math.max(maxTf, tf + 1);
                     }
                 }
-
             }
+            // 处理metaData
+            processMetaData(page, maxTf);
 
         }
 
@@ -154,7 +205,30 @@ public class IndexService {
         }
     }
 
-    private void writeToEs() throws IOException {
+    private void processMetaData(WebPage page, int maxTf) {
+        // 处理元数据
+        List<MetaDoc> metaDocs = new ArrayList<>();
+        MetaDoc metaDoc = new MetaDoc();
+        metaDoc.setPageId(page.getPageId());
+        metaDoc.setUrl(page.getUrl());
+        metaDoc.setTitle(page.getTitle());
+        metaDoc.setLastModifyTime(page.getLastModifyTime());
+        metaDoc.setSize(page.getSize());
+        metaDoc.setMaxTf(maxTf);
+        metaDoc.setParentLinks(parentMap.get(page.getPageId()));
+        metaDoc.setChildLinks(childMap.get(page.getPageId()));
+
+        metaDocs.add(metaDoc);
+        // 批量写入ES
+        try {
+            esClient.createIndex(META_DOC_INDEX);
+            esClient.bulkIndex(META_DOC_INDEX, metaDocs);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void writeInvertedIndexToEs() throws IOException {
         // 转换并写入
         List<TitleIndex> titleIndexList = convertTitleMap();
         List<BodyIndex> bodyIndexList = convertBodyMap();
@@ -190,5 +264,6 @@ public class IndexService {
         }
         return bodyIndexList;
     }
+
 
 }
