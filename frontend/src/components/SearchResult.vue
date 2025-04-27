@@ -39,9 +39,9 @@
   </template>
 
   
-    <div class="mb-4 text-sm text-gray-800">
+    <div class="mb-3 text-l text-gray-800">
       <strong>Top Keywords:</strong>
-      <div class="flex flex-wrap gap-2">
+      <div class="flex flex-wrap gap-2 gap-y-10"> 
         <el-tag
           v-for="(item, i) in result.content.term_freq_list"
           :key="i"
@@ -49,15 +49,15 @@
           size="small"
           class="mb-1"
         >
-          {{ item.term }}
+          {{ item.term }}: {{ item.frequency }}
         </el-tag>
       </div>
     </div>
 
-    <div v-if="result.content.parent_links.length" class="mt-4">
+    <div v-if="result.content.parent_links.length" class="mt-3">
       <strong>Parent Links:</strong>
-      <ul class="ml-4 text-sm text-blue-600 list-disc">
-        <li v-for="(link, i) in result.content.child_links" :key="'parent-' + i">
+      <ul class="ml-4 text-sm text-blue-600 list-disc space-y-1"> 
+        <li v-for="(link, i) in result.content.parent_links" :key="'parent-' + i">
           <template v-if="link.link">
             <el-link 
               :href="link.link" 
@@ -74,9 +74,9 @@
       </ul>
     </div>
 
-    <div v-if="result.content.child_links.length" class="mt-4">
+    <div v-if="result.content.child_links.length" class="mt-1">
       <strong>Child Links:</strong>
-      <ul class="ml-4 text-sm text-blue-600 list-disc">
+      <ul class="ml-4 text-sm text-blue-600 list-disc space-y-1"> 
         <li v-for="(link, i) in result.content.child_links" :key="'child-' + i">
           <template v-if="link.link">
             <el-link 

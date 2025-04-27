@@ -81,6 +81,7 @@ class SearchEngine:
         for doc, score in scores[:50]:
             content = pageid_to_content.get(int(doc))
             if content:
+                content['term_freq_list'] = sorted(content['term_freq_list'], key=lambda x: x['frequency'], reverse=True)[:5]
                 top_docs.append({
                     "content": content,
                     "score": score
