@@ -1,7 +1,7 @@
 import json
 import math
 from collections import Counter
-from indexer import stem, remove_stopwords, extract_bigrams
+from indexer import stem, remove_stopwords, extract_bigrams,get_original_word
 from elasticsearch import Elasticsearch
 import re
 
@@ -21,7 +21,7 @@ class SearchEngine:
         self.meta = es.search(index="meta_doc", body=body)['hits']['hits']
 
     def search(self, query):
-        terms = stem(remove_stopwords(query))
+        terms, oriTerms = stem(remove_stopwords(query))
         phrases = extract_bigrams(query)
         all_terms = terms + phrases
         idf_vec = self._build_idf_vector(all_terms)
@@ -89,7 +89,8 @@ class SearchEngine:
         for doc, score,keyword in scores[:50]:
             content = pageid_to_content.get(int(doc))
             text = text_content.get(int(doc))['content']
-            snippents = extract_snippets(text,keyword)
+            snippents = extract_snippets(text,get_original_word(keyword)[0])
+            print(get_original_word(keyword)[0])
             if content:
                 content['term_freq_list'] = sorted(content['term_freq_list'], key=lambda x: x['frequency'], reverse=True)[:5]
                 top_docs.append({
