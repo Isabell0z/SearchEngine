@@ -5,6 +5,7 @@ from urllib.parse import urljoin
 from elasticsearch import Elasticsearch
 from datetime import datetime
 from urllib import parse
+import re
 
 # kibana 7.3.1
 # elasticsearch 7.3.1
@@ -21,6 +22,11 @@ class Spider:
         self.page_id_counter = 1  
         # initialize Elasticsearch
         self.es = Elasticsearch("http://localhost:9200")
+        self.page_info_batch = []  # 暂存网页信息
+        self.page_structure_batch = []  # 暂存网页结构信息
+        self.reverse_page_structure_batch = []  # 暂存反向网页结构信息
+        self.page_extended_info_batch = []  # 暂存网页扩展信息
+        
         # create indices
         self.create_index('web_pages', {
             "mappings": {
@@ -31,6 +37,19 @@ class Spider:
                     "content": {"type": "text"},
                     "last_modify_time": {"type": "date"},
                     "size": {"type": "integer"}
+                }
+            }
+        })
+        self.create_index('web_extended_info', {
+            "mappings": {
+                "properties": {
+                    "page_id": {"type": "integer"},
+                    "genre": {"type": "keyword"},  # 新增属性
+                    "plot_summary": {"type": "text"},  # 新增属性
+                    "plot_keywords": {"type": "keyword"},  # 新增属性
+                    "country": {"type": "keyword"},  # 新增属性
+                    "language": {"type": "keyword"},  # 新增属性
+                    "company": {"type": "keyword"} ,  # 新增属性
                 }
             }
         })
@@ -70,11 +89,41 @@ class Spider:
                     last_modify_time = datetime.strptime(last_modified, '%a, %d %b %Y %H:%M:%S %Z')
                 else:
                     last_modify_time = "1970-01-01T00:00:00Z"  # default value if not available
-                soup = BeautifulSoup(response.text, 'html.parser')
+                soup = BeautifulSoup(response.text, 'lxml')
                 title = soup.title.string if soup.title else ''
-                content =soup.body.get_text().replace('\n', '').replace('\r', '')
+                content = soup.get_text(separator='\n')  # 获取网页正文内容
                 size=response.raw._fp_bytes_read if response.raw._fp_bytes_read else 0 #get size of the page(bytes)
 
+                # 提取信息
+                genre_match = re.search(  r'Genre:\s*(.*?)(?=\n(?!\n)(?=[A-Z])|more)', content, re.DOTALL)
+                if genre_match:
+                    genre = genre_match.group(1).strip().split('/')
+                    genre = [g.strip() for g in genre if g.strip()]  # 去除空格和空字符串
+                
+                plot_summary_match = re.search(r'Plot Summary:\s*(.*?)(?=\n(?!\n)(?=[A-Z])|more)', content, re.DOTALL)
+                if plot_summary_match:
+                    plot_summary = plot_summary_match.group(1).strip()
+                
+                plot_keywords_match = re.search( r'Plot Keywords:\s*([\s\S]*?)(?=\n[^\n:]*:|more|\Z)', content, re.DOTALL)
+                if plot_keywords_match:
+                    plot_keywords = plot_keywords_match.group(1).strip().split('/')
+                    plot_keywords = [pk.replace('\xa0',' ').strip() for pk in plot_keywords if pk.strip()]   
+                
+                country_match = re.search(r'Country:\s*(.*?)(?=\n\w+:|\Z)', content, re.DOTALL)
+                if country_match:
+                    country = country_match.group(1).strip().split('/')
+                    country = [c.strip() for c in country if c.strip()]   
+                
+                language_match = re.search(r'Language:\s*(.*?)(?=\n\w+:|\Z)', content, re.DOTALL)
+                if language_match:
+                    language = language_match.group(1).strip().split('/')
+                    language = [l.strip() for l in language if l.strip()]   
+                
+                company_match = re.search(r'Company:\s*(.*?)(?=\n(?!\n)(?=[A-Z])|more)', content, re.DOTALL)
+                if company_match:
+                    company = company_match.group(1).strip().split('/')
+                    company = [c.strip() for c in company if c.strip()]  
+                
                 # not visited and not assigned id
                 if url not in self.url_map:
                     page_id = self.page_id_counter
@@ -85,8 +134,27 @@ class Spider:
                     page_id = self.url_map[url]
                     
                 # store page info in Elasticsearch
-                self.store_page_info(page_id, url, title, content, last_modify_time,size)
+                # self.store_page_info(page_id, url, title, content, last_modify_time,size)
 
+                self.page_info_batch.append({
+                    "page_id": page_id,
+                    "url": url,
+                    "title": title,
+                    "content": content.replace('\n', '').replace('\r', ''),
+                    "last_modify_time": last_modify_time,
+                    "size": size,
+                })
+                self.page_extended_info_batch.append({
+                    "page_id": page_id,
+                    "genre": genre if 'genre' in locals() else [],
+                    "plot_summary": plot_summary if 'plot_summary' in locals() else '',
+                    "plot_keywords": plot_keywords if 'plot_keywords' in locals() else [],
+                    "country": country if 'country' in locals() else [],
+                    "language": language if 'language' in locals() else [],
+                    "company": company if 'company' in locals() else []
+                })
+                
+                
                 # find all links on the page
                 links = [link.get('href') for link in soup.find_all('a', href=True)]
                 return page_id, links
@@ -95,32 +163,23 @@ class Spider:
             print(f"Failed to fetch {url}: {e}")
             return None, []
 
-    def store_page_info(self, page_id, url, title, content, last_modify_time,size):
-        doc = {
-            "page_id": page_id,
-            "url": url,
-            "title": title,
-            "content": content,
-            "last_modify_time": last_modify_time,
-            "size": size
-        }
-        self.es.index(index='web_pages', id=page_id, body=doc)
+    def store_page_info(self):
+        for doc in self.page_info_batch:
+            self.es.index(index='web_pages', id=doc['page_id'], body=doc)
+        self.page_info_batch=[]  
+        for doc in self.page_extended_info_batch:
+            self.es.index(index='web_extended_info', id=doc['page_id'], body=doc)
+        self.page_extended_info_batch=[] 
 
-    def store_page_structure(self, parent_page_id, child_page_id):
-        # store parent-child relationship in Elasticsearch
-        doc = {
-            "parent_page_id": parent_page_id,
-            "child_page_id": child_page_id
-        }
-        self.es.index(index='web_page_structure', body=doc)
-        # store child-parent relationship in Elasticsearch
-        reverse_doc = {
-            "child_page_id": child_page_id,
-            "parent_page_id": parent_page_id
-        }
-        self.es.index(index='reverse_web_page_structure', body=reverse_doc)
+    def store_page_structure(self):
+        for doc in self.page_structure_batch:
+            self.es.index(index='web_page_structure', body=doc)
+        self.page_structure_batch = []
+        for doc in self.reverse_page_structure_batch:
+            self.es.index(index='reverse_web_page_structure', body=doc)
+        self.reverse_page_structure_batch = []
 
-    def crawl(self):
+    def crawl(self,batch_size=20):
         while self.to_visit_urls and self.page_count < self.max_pages:
             url = self.to_visit_urls.popleft()
             if url in self.visited_urls:
@@ -147,41 +206,25 @@ class Spider:
                     elif new_full_url in self.visited_urls:
                         child_page_id = self.url_map[new_full_url]
                     
-                    self.store_page_structure(parent_page_id, child_page_id)
-    
-    def view_web_pages_data(self):
-        query = {
-            "query": {
-                "match_all": {}
-            },
-            "size": 1000
-        }
-        result = self.es.search(index='web_pages', body=query)
-        for hit in result['hits']['hits']:
-            print(hit['_source'])
+                    # self.store_page_structure(parent_page_id, child_page_id)
+                    self.page_structure_batch.append({
+                        "parent_page_id": parent_page_id,
+                        "child_page_id": child_page_id
+                    })
+                    self.reverse_page_structure_batch.append({
+                        "child_page_id": child_page_id,
+                        "parent_page_id": parent_page_id
+                    })
 
-    def view_web_page_structure_data(self):
-        query = {
-            "query": {
-                "match_all": {}
-            },
-            "size": 1000
-        }
-        result = self.es.search(index='web_page_structure', body=query)
-        for hit in result['hits']['hits']:
-            print(hit['_source'])
+            if len(self.page_structure_batch) >= batch_size:
+                    self.store_page_info()
+            if len(self.reverse_page_structure_batch) >= batch_size:
+                self.store_page_structure()
+        if self.page_info_batch:
+            self.store_page_info()
+        if self.page_structure_batch or self.reverse_page_structure_batch:
+            self.store_page_structure()
             
-    def view_reverse_web_page_structure_data(self):
-        query = {
-            "query": {
-                "match_all": {}
-            },
-            "size": 1000
-        }
-        result = self.es.search(index='reverse_web_page_structure', body=query)
-        for hit in result['hits']['hits']:
-            print(hit['_source'])
-
 
 
 if __name__ == "__main__":
