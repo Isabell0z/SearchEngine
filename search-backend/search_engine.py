@@ -4,6 +4,7 @@ from collections import Counter
 from indexer import stem, remove_stopwords, extract_bigrams,get_original_word
 from elasticsearch import Elasticsearch
 import re
+from spell import correction
 
 es = Elasticsearch("http://localhost:9200")
 class SearchEngine:
@@ -27,6 +28,17 @@ class SearchEngine:
         all_terms = terms + phrases
         idf_vec = self._build_idf_vector(all_terms)
         candidates = self._find_candidate_docs(all_terms)
+        
+        # 简单的纠错，e.g. moive-> movie
+        if not candidates:
+            corrected_query = "".join([correction(term) for term in all_terms])
+            terms, oriTerms = stem(remove_stopwords(corrected_query))
+            phrases,oriTerm = extract_bigrams(corrected_query)
+            oriTerms.update(oriTerm)
+            all_terms = terms + phrases
+            idf_vec = self._build_idf_vector(all_terms)
+            candidates = self._find_candidate_docs(all_terms)
+        
         unique_terms = Counter(all_terms)
         query_vec = {}
         for term, tf in unique_terms.items():
