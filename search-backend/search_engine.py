@@ -22,7 +22,8 @@ class SearchEngine:
 
     def search(self, query):
         terms, oriTerms = stem(remove_stopwords(query))
-        phrases = extract_bigrams(query)
+        phrases,oriTerm = extract_bigrams(query)
+        oriTerms.update(oriTerm)
         all_terms = terms + phrases
         idf_vec = self._build_idf_vector(all_terms)
         candidates = self._find_candidate_docs(all_terms)
@@ -89,8 +90,7 @@ class SearchEngine:
         for doc, score,keyword in scores[:50]:
             content = pageid_to_content.get(int(doc))
             text = text_content.get(int(doc))['content']
-            snippents = extract_snippets(text,get_original_word(keyword)[0])
-            print(get_original_word(keyword)[0])
+            snippents = extract_snippets(text,get_original_word(keyword,oriTerms)[0])
             if content:
                 content['term_freq_list'] = sorted(content['term_freq_list'], key=lambda x: x['frequency'], reverse=True)[:5]
                 top_docs.append({
@@ -162,7 +162,7 @@ class SearchEngine:
                 doc_weight *= 2.0
             k = terms.get(term, 0) * doc_weight
             if k > max_tfidf:
-                k = max_tfidf
+                max_tfidf = k
                 key_term = term
             dot += k
         query_len = math.sqrt(sum(v**2 for v in terms.values()))
