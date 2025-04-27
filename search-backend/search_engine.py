@@ -46,9 +46,10 @@ class SearchEngine:
                 "terms": {
                      "page_id": docs
                 }
-            }
+            },
+            "size": 50
         }
-        response = es.search(index="meta_doc", body=body, size=50)
+        response = es.search(index="meta_doc", body=body)
         response_content = es.search(index="web_pages", body=body)
         text_content = {}
         for hit in response_content["hits"]["hits"]:
@@ -62,12 +63,12 @@ class SearchEngine:
             pageid_to_content[page_id] = source          
         
         links_ids = []
-        links_ids = []
         for doc, score,_ in scores[:50]:
             content = pageid_to_content.get(int(doc))
             if content:
-                links_ids.extend(content.get("child_links", []))
-                links_ids.extend(content.get("parent_links", []))
+                new_links = set(content.get("child_links") +content.get("parent_links"))
+                # 仅添加不在 links_ids 中的链接
+                links_ids.extend([link for link in new_links if link not in links_ids])
                 
         if links_ids:
             body = {
@@ -78,14 +79,17 @@ class SearchEngine:
                 }
             }
             resp = es.search(index="meta_doc", body=body, size=300)
+            print(resp["hits"]["hits"])
             for hit in resp["hits"]["hits"]:
                 page_id = hit["_source"]["page_id"]
                 for doc in pageid_to_content:
                     content = pageid_to_content.get(doc)
                     if content and page_id in content.get("child_links", []):
-                        content['child_links'] = [{'title': hit["_source"].get("title", ""), 'link': hit["_source"].get("url", "")}]
+                        content['child_links'] = [link for link in content['child_links'] if link != page_id]
+                        content['child_links'].append({'title': hit["_source"].get("title", ""), 'link': hit["_source"].get("url", "")})
                     if content and page_id in content.get("parent_links", []):
-                        content['parent_links'] = [{'title': hit["_source"].get("title", ""), 'link': hit["_source"].get("url", "")}]
+                        content['parent_links'] = [link for link in content['child_links'] if link != page_id]
+                        content['parent_links'].append({'title': hit["_source"].get("title", ""), 'link': hit["_source"].get("url", "")})
 
         for doc, score,keyword in scores[:50]:
             content = pageid_to_content.get(int(doc))
