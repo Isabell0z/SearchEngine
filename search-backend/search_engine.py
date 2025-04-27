@@ -88,7 +88,7 @@ class SearchEngine:
                         content['child_links'] = [link for link in content['child_links'] if link != page_id]
                         content['child_links'].append({'title': hit["_source"].get("title", ""), 'link': hit["_source"].get("url", "")})
                     if content and page_id in content.get("parent_links", []):
-                        content['parent_links'] = [link for link in content['child_links'] if link != page_id]
+                        content['parent_links'] = [link for link in content['parent_links'] if link != page_id]
                         content['parent_links'].append({'title': hit["_source"].get("title", ""), 'link': hit["_source"].get("url", "")})
 
         for doc, score,keyword in scores[:50]:
