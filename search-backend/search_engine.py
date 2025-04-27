@@ -3,6 +3,7 @@ import math
 from collections import Counter
 from indexer import stem, remove_stopwords, extract_bigrams
 from elasticsearch import Elasticsearch
+import re
 
 es = Elasticsearch("http://localhost:9200")
 class SearchEngine:
@@ -33,11 +34,12 @@ class SearchEngine:
         scores = []
         top_docs = []
         for doc in candidates:
-            score = self._cosine_similarity(doc, idf_vec, query_vec)
-            scores.append((doc, score))
+            score, key_term = self._cosine_similarity(doc, idf_vec, query_vec)
+            scores.append((doc,score,key_term))
+
 
         scores.sort(key=lambda x: x[1], reverse=True)
-        docs = [int(doc) for doc,_ in scores[:50]]
+        docs = [int(doc) for doc,_,_ in scores[:50]]
         body = {
             "query": {
                 "terms": {
@@ -46,6 +48,12 @@ class SearchEngine:
             }
         }
         response = es.search(index="meta_doc", body=body, size=50)
+        response_content = es.search(index="web_pages", body=body)
+        text_content = {}
+        for hit in response_content["hits"]["hits"]:
+            source = hit["_source"]
+            page_id = source["page_id"]
+            text_content[page_id] = source    
         pageid_to_content = {}
         for hit in response["hits"]["hits"]:
             source = hit["_source"]
@@ -54,7 +62,7 @@ class SearchEngine:
         
         links_ids = []
         links_ids = []
-        for doc, score in scores[:50]:
+        for doc, score,_ in scores[:50]:
             content = pageid_to_content.get(int(doc))
             if content:
                 links_ids.extend(content.get("child_links", []))
@@ -78,12 +86,15 @@ class SearchEngine:
                     if content and page_id in content.get("parent_links", []):
                         content['parent_links'] = [{'title': hit["_source"].get("title", ""), 'link': hit["_source"].get("url", "")}]
 
-        for doc, score in scores[:50]:
+        for doc, score,keyword in scores[:50]:
             content = pageid_to_content.get(int(doc))
+            text = text_content.get(int(doc))['content']
+            snippents = extract_snippets(text,keyword)
             if content:
                 content['term_freq_list'] = sorted(content['term_freq_list'], key=lambda x: x['frequency'], reverse=True)[:5]
                 top_docs.append({
                     "content": content,
+                    "snippents":  snippents,
                     "score": score
                 })
 
@@ -133,6 +144,8 @@ class SearchEngine:
                 }
             }
         }
+        max_tfidf = 0.0
+        key_term =""
         indexs = es.search(index="meta_doc", body=body)
         dot = 0
         doc_len = indexs['hits']['hits'][0]['_source']['length']  ######????
@@ -146,9 +159,13 @@ class SearchEngine:
                 doc_weight = tf  * idf
             if self._title_hit(doc, term):
                 doc_weight *= 2.0
-            dot += terms.get(term, 0) * doc_weight
+            k = terms.get(term, 0) * doc_weight
+            if k > max_tfidf:
+                k = max_tfidf
+                key_term = term
+            dot += k
         query_len = math.sqrt(sum(v**2 for v in terms.values()))
-        return dot / (doc_len * query_len + 1e-6)
+        return dot / (doc_len * query_len + 1e-6), key_term
 
     def _get_tf(self, term, doc_id):
         body = {
@@ -179,3 +196,28 @@ class SearchEngine:
                 if p == doc_id:
                     return True
         return False
+    
+def extract_snippets(text, keyword, context_window=30,max_snippets=5):
+    if not keyword:  
+        return []
+
+    snippets = []
+
+    keyword = str(keyword)
+
+    # 处理由下划线连接的 bigram：将下划线替换为空格
+    keyword = keyword.replace('_', ' ')
+
+    # 构建正则表达式，确保关键词是精确匹配的
+    keyword_pattern = re.escape(keyword)  # 转义 keyword，以防特殊字符
+    pattern = re.compile(r'\b{}\b'.format(keyword_pattern), flags=re.IGNORECASE)
+    for match in pattern.finditer(text):
+        if len(snippets) >= max_snippets:
+            break  # 达到最大数量时停止
+        start = max(0, match.start() - context_window)
+        end = min(len(text), match.end() + context_window)
+        snippet = text[start:end]
+        highlighted = pattern.sub(r'<mark>\g<0></mark>', snippet)  # 用 <mark> 标签高亮
+        snippets.append(highlighted)
+
+    return snippets

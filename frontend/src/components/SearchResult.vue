@@ -9,18 +9,18 @@
         target="_blank"
         class="text-10xl font-black text-blue-600 hover:text-blue-800 transition-colors duration-200 truncate"
       >
-        {{ result.content.title }}
+        {{ result.content.title || 'empty'}}
       </el-link>
     </el-col>
     <el-col :span="4" class="text-right">
       <!-- Score (right side) -->
       <span class="text-xs font-thin text-gray-300 ml-auto">
-         Score: {{ result.score.toFixed(4) }}
+         Score: {{ result.score.toFixed(4) || 'empty'}}
       </span>
     </el-col>
     <el-col :span="4" class="text-right">
       <span class="text-xs font-thin text-gray-300 ml-auto">
-        Pagerank: {{ result.content.page_rank.toFixed(4)}}
+        Pagerank: {{ result.content.page_rank.toFixed(4)|| 'empty'}}
       </span>
     </el-col>
   </el-row>
@@ -54,7 +54,7 @@
       </div>
     </div>
 
-    <div v-if="result.content.parent_links.length" class="mt-3">
+    <div v-if="result.content.parent_links && result.content.parent_links.length" class="mt-3">
       <strong>Parent Links:</strong>
       <ul class="ml-4 text-sm text-blue-600 list-disc space-y-1"> 
         <li v-for="(link, i) in result.content.parent_links" :key="'parent-' + i">
@@ -74,7 +74,7 @@
       </ul>
     </div>
 
-    <div v-if="result.content.child_links.length" class="mt-1">
+    <div v-if="result.content.child_links && result.content.child_links.length" class="mt-1">
       <strong>Child Links:</strong>
       <ul class="ml-4 text-sm text-blue-600 list-disc space-y-1"> 
         <li v-for="(link, i) in result.content.child_links" :key="'child-' + i">
@@ -93,6 +93,12 @@
         </li>
       </ul>
     </div>
+    <div v-if="result.snippents && result.snippents.length">
+      <h3 class="text-lg font-semibold mb-4">Highlighted Snippets</h3>
+      <div v-for="(snippet, index) in result.snippents" :key="index" class="snippet-card mb-4 p-4 rounded-lg shadow-md bg-white">
+        <div>... <span v-html="snippet"></span> ...</div>
+    </div>
+  </div>
   </el-card>
 </template>
 
@@ -121,5 +127,29 @@ function formatTime(isoTime) {
 
 .el-link:hover {
   color: #0073e6;
+}
+
+.snippet-card {
+  background-color: #f9fafb; /* 背景颜色 */
+  border: 1px solid #e5e7eb; /* 边框颜色 */
+  padding: 16px; /* 内边距 */
+  border-radius: 8px; /* 边框圆角 */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* 阴影效果 */
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+
+/* 高亮部分样式，字体变红 */
+mark {
+  color: #e11d48; /* 红色字体 */
+  background-color: transparent; /* 去除背景色 */
+  font-weight: bold; /* 加粗字体 */
+}
+
+/* 标题样式 */
+h3 {
+  font-size: 1.25rem;
+  color: #4b5563; /* 深灰色标题 */
+  margin-bottom: 1rem;
 }
 </style>

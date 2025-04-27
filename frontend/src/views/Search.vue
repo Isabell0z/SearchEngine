@@ -102,27 +102,27 @@ const currentPage = ref(1);
 const sortBy = ref('relevance')
 const allKeywords = computed(() => {
   const keywordFreqMap = new Map();
+  if (results.value.length != 0) {
+    results.value.forEach(result => {
+      if (result.content && Array.isArray(result.content.term_freq_list)) {
+        result.content.term_freq_list.forEach(keyword => {
+          if (keyword.term) {
+            keywordFreqMap.set(keyword.term, currentFreq + (keyword.frequency || 0));
+          }
+        });
+      }
+    });
 
-  // 统计所有 term 的 frequency
-  results.value.forEach(result => {
-    if (result.content && Array.isArray(result.content.term_freq_list)) {
-      result.content.term_freq_list.forEach(keyword => {
-        if (keyword.term) {
-          const currentFreq = keywordFreqMap.get(keyword.term) || 0;
-          keywordFreqMap.set(keyword.term, currentFreq + (keyword.frequency || 0));
-        }
-      });
-    }
-  });
+    // 排序，取前 10 个高频关键词
+    const topKeywords = Array.from(keywordFreqMap.entries())
+      .sort((a, b) => b[1] - a[1]) // 按 frequency 降序
+      .slice(0, 10)
+      .map(([term, _]) => term);   // 只要 term，不要频率
 
-  // 排序，取前 10 个高频关键词
-  const topKeywords = Array.from(keywordFreqMap.entries())
-    .sort((a, b) => b[1] - a[1]) // 按 frequency 降序
-    .slice(0, 10)
-    .map(([term, _]) => term);   // 只要 term，不要频率
-
-  const sortedKeywords = [...topKeywords].sort()
-  return Array.from(sortedKeywords)  // 将 Set 转换为数组并返回
+    const sortedKeywords = [...topKeywords].sort()
+    return Array.from(sortedKeywords)  // 将 Set 转换为数组并返回
+  }
+  return []
 })
 watch(results, (newResults) => {
   console.log("Results updated:", newResults)
@@ -139,9 +139,6 @@ const scrollToTop = () => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-onMounted(() => {
-  window.addEventListener('scroll', handleScroll)
-})
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
 })
@@ -151,6 +148,9 @@ const paginatedResults = computed(() => {
   return filteredResults.value.slice(start, end);
 });
 const filteredResults = computed(() => {
+  if (!results.value || results.value.length === 0) {
+    return [];
+  }
   let filtered = results.value
 
   if (selectedKeywords.value.length > 0) {
@@ -210,6 +210,7 @@ onMounted(() => {
   if (authStore.isLoggedIn) {
     fetchHistory();
   }
+  window.addEventListener('scroll', handleScroll)
 });
 
 const search = async () => {
@@ -230,7 +231,6 @@ const search = async () => {
     
     // 将返回的数据存储到 results 中
     results.value = data;
-    
     // 标记已完成搜索
     searched.value = true;
   } catch (err) {
@@ -275,7 +275,7 @@ const search = async () => {
   align-items: center;
 }
 .sort-buttons .result-count {
-  margin-left: auto; /* 把结果数量挤到最右边 */
+  margin-left: auto; 
   font-size: inherit;
   color: #555;
 }
