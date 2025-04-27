@@ -100,6 +100,7 @@ const history = ref([])
 const itemsPerPage = 10;
 const currentPage = ref(1);
 const sortBy = ref('relevance')
+
 const allKeywords = computed(() => {
   const keywordFreqMap = new Map();
   if (results.value.length != 0) {
@@ -107,6 +108,7 @@ const allKeywords = computed(() => {
       if (result.content && Array.isArray(result.content.term_freq_list)) {
         result.content.term_freq_list.forEach(keyword => {
           if (keyword.term) {
+            const currentFreq = keywordFreqMap.get(keyword.term) || 0;
             keywordFreqMap.set(keyword.term, currentFreq + (keyword.frequency || 0));
           }
         });

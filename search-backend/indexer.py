@@ -26,6 +26,5 @@ def extract_bigrams(query: str) -> list:
     
     words = [word for word in words if word not in stop_words]
     words = [stemmer.stem(word) for word in words]
-    
     bigrams = [f'{words[i]}_{words[i+1]}' for i in range(len(words)-1)]
     return bigrams
