@@ -1,7 +1,8 @@
 <template>
   <div class="page-layout">
     <!-- 左侧筛选栏 -->
-    <aside class="sidebar">
+    <el-aside v-if="allKeywords && allKeywords.length > 0" class="sidebar">
+    
       <h3>Keywords</h3>
       <div v-for="keyword in allKeywords" :key="keyword">
         <label>
@@ -13,7 +14,7 @@
           {{ keyword }}
         </label>
       </div>
-    </aside>
+    </el-aside>
     <main class="main-content">
       <button
     v-show="showBackToTop"
