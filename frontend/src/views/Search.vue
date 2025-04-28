@@ -41,6 +41,7 @@
         <el-button type="primary" @click="search"> Search </el-button>
         </el-col>
       </el-row>
+      
       <div class="sort-buttons">
         <button
         :class="{ active: sortBy === 'relevance' }"
@@ -56,7 +57,11 @@
       </button>
       <p class="result-count">Total {{ filteredResults.length }} results</p>
     </div>
+    <div v-if="corrected_query" class="mt-10">
+          Are you looking for: <strong>{{ corrected_query }}</strong>?
+      </div>
     </el-card>
+    
     <div v-if="filteredResults && filteredResults.length" class="mt-8 space-y-6">
       <SearchResult
         v-for="(result, index) in paginatedResults"
@@ -72,6 +77,7 @@
         class="flex justify-center mt-6"
       />
     </div>
+  
 
     <el-empty v-else-if="searched" description="No results found." class="mt-10" />
   </div>
@@ -173,7 +179,7 @@ watch(results, (newResults) => {
 })
 const selectedKeywords = ref([])
 const showBackToTop = ref(false)
-
+const corrected_query = ref(null) // 用于存储纠正的查询
 const handleScroll = () => {
   showBackToTop.value = window.scrollY > 300
 }
@@ -266,7 +272,9 @@ const search = async () => {
     const data = await res.json();
     
     // 将返回的数据存储到 results 中
-    results.value = data;
+    results.value = data.result;
+    corrected_query.value = data.corrected_query || null; // 处理纠正的查询
+    console.log('corrected_query:', corrected_query.value)
     // 标记已完成搜索
     searched.value = true;
   } catch (err) {

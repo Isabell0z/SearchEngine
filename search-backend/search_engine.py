@@ -30,8 +30,9 @@ class SearchEngine:
         candidates = self._find_candidate_docs(all_terms)
         
         # 简单的纠错，e.g. moive-> movie
+        corrected_query=""
         if not candidates:
-            corrected_query = "".join([correction(term) for term in all_terms])
+            corrected_query = "".join([correction(term)[0] for term in all_terms])
             terms, oriTerms = stem(remove_stopwords(corrected_query))
             phrases,oriTerm = extract_bigrams(corrected_query)
             oriTerms.update(oriTerm)
@@ -125,10 +126,11 @@ class SearchEngine:
                     "content": content,
                     "snippents":  snippents,
                     "keywords": keywords_list.get(int(doc),[]),
-                    "score": score
+                    "score": score,
+                 
                 })
 
-        return top_docs
+        return top_docs,corrected_query
 
     def _build_idf_vector(self, terms):
         # Compute idf of each term  using cache

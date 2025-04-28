@@ -19,7 +19,7 @@ jwt = JWTManager(app)
 db = mysql.connector.connect(
     host="localhost",
     user="root",
-    password="zhouchuqiao0213",
+    password="root",
     database="User"
 )
 cursor = db.cursor(dictionary=True)
@@ -49,9 +49,12 @@ def search():
                 (current_user, query)
             )
             db.commit()
-    result = engine.search(query)
-    print("user:",current_user,"result:",result)
-    return jsonify(result)
+    result,corrected_query = engine.search(query)
+    # print("user:",current_user,"result:",result,"corrected_query:",corrected_query)
+    # print(jsonify(result,corrected_query))
+    print(corrected_query)
+    dict={'result': result, "corrected_query": corrected_query}
+    return jsonify(dict)
 
 
 
