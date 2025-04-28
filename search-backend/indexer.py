@@ -3,6 +3,8 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import re
 import nltk
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 nltk.download('stopwords')
 nltk.download('punkt')
 # 初始化 stemmer 和停用词表

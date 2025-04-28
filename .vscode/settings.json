@@ -1,3 +1,4 @@
 {
-    "jdk.runConfig.env": ">python environment"
+    "jdk.runConfig.env": ">python environment",
+    "java.compile.nullAnalysis.mode": "automatic"
 }

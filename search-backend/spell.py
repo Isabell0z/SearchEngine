@@ -6,7 +6,13 @@ print(os.getcwd())
 
 def words(text): return re.findall(r'\w+', text.lower())
 
-WORDS = Counter(words(open('./data/combined_content.txt').read()))
+# WORDS = Counter(words(open('./data/combined_content.txt').read()))
+# 获取脚本所在目录的绝对路径
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# 构建文件的绝对路径
+file_path = os.path.join(BASE_DIR, 'data', 'combined_content.txt')
+
+WORDS = Counter(words(open(file_path).read()))
 
 
 def P(word, N=sum(WORDS.values())): 
