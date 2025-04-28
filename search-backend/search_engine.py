@@ -48,6 +48,9 @@ class SearchEngine:
         top_docs = []
         for doc in candidates:
             score, key_term = self._cosine_similarity(doc, idf_vec, query_vec)
+            for term, tf in unique_terms.items():
+                if self._title_hit(doc, term):
+                    score += 0.03
             scores.append((doc,score,key_term))
 
 
@@ -86,9 +89,10 @@ class SearchEngine:
         for doc, score,_ in scores[:50]:
             content = pageid_to_content.get(int(doc))
             if content:
-                new_links = set(content.get("child_links") +content.get("parent_links"))
+                new_links = set(content.get("child_links",[]) +content.get("parent_links",[]))
                 # 仅添加不在 links_ids 中的链接
                 links_ids.extend([link for link in new_links if link not in links_ids])
+
                 
         if links_ids:
             body = {
@@ -183,8 +187,6 @@ class SearchEngine:
                 doc_weight = (tf / max_tf) * idf
             else:
                 doc_weight = tf  * idf
-            if self._title_hit(doc, term):
-                doc_weight *= 2.0
             k = terms.get(term, 0) * doc_weight
             if k > max_tfidf:
                 max_tfidf = k

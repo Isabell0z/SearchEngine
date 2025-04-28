@@ -54,7 +54,7 @@ export default {
           authStore.setUsername(username.value); 
           localStorage.setItem('token', data.access_token);
           console.log('Token sent:', localStorage.getItem('token'));
-          router.push('/search');
+          router.push('/start');
         } else {
           ElMessage.error('Wrong username or password'); 
         }
@@ -65,7 +65,7 @@ export default {
     };
 
     const goToSearch = () => {
-      router.push('/search');
+      router.push('/start');
     };
 
     const goToRegister = () => {

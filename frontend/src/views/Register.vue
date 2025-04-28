@@ -85,7 +85,7 @@
         }
       },
       goToSearch() {
-        this.$router.push('/search');
+        this.$router.push('/start');
       }
     }
   };
