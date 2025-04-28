@@ -32,7 +32,7 @@ class SearchEngine:
         # 简单的纠错，e.g. moive-> movie
         corrected_query=""
         if not candidates:
-            corrected_query = "".join([correction(term)[0] for term in all_terms])
+            corrected_query = "".join([correction(term) for term in all_terms])
             terms, oriTerms = stem(remove_stopwords(corrected_query))
             phrases,oriTerm = extract_bigrams(corrected_query)
             oriTerms.update(oriTerm)
