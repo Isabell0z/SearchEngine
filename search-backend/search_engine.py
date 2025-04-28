@@ -30,6 +30,7 @@ class SearchEngine:
         candidates = self._find_candidate_docs(all_terms)
         
         # 简单的纠错，e.g. moive-> movie
+        corrected_query=""
         if not candidates:
             corrected_query = "".join([correction(term) for term in all_terms])
             terms, oriTerms = stem(remove_stopwords(corrected_query))
@@ -48,6 +49,9 @@ class SearchEngine:
         top_docs = []
         for doc in candidates:
             score, key_term = self._cosine_similarity(doc, idf_vec, query_vec)
+            for term, tf in unique_terms.items():
+                if self._title_hit(doc, term):
+                    score += 0.03
             scores.append((doc,score,key_term))
 
 
@@ -78,17 +82,18 @@ class SearchEngine:
         for hit in response_keywords["hits"]["hits"]:
             source = hit["_source"]
             page_id = source["page_id"]
-            if source['plot_keywords']:
-                keywords_list[page_id] = source['plot_keywords']   
+            if source['genre']:
+                keywords_list[page_id] = source['genre']   
             else :
                  keywords_list[page_id] = []
         links_ids = []
         for doc, score,_ in scores[:50]:
             content = pageid_to_content.get(int(doc))
             if content:
-                new_links = set(content.get("child_links") +content.get("parent_links"))
+                new_links = set(content.get("child_links",[]) +content.get("parent_links",[]))
                 # 仅添加不在 links_ids 中的链接
                 links_ids.extend([link for link in new_links if link not in links_ids])
+
                 
         if links_ids:
             body = {
@@ -121,10 +126,11 @@ class SearchEngine:
                     "content": content,
                     "snippents":  snippents,
                     "keywords": keywords_list.get(int(doc),[]),
-                    "score": score
+                    "score": score,
+                 
                 })
 
-        return top_docs
+        return top_docs,corrected_query
 
     def _build_idf_vector(self, terms):
         # Compute idf of each term  using cache
@@ -183,8 +189,6 @@ class SearchEngine:
                 doc_weight = (tf / max_tf) * idf
             else:
                 doc_weight = tf  * idf
-            if self._title_hit(doc, term):
-                doc_weight *= 2.0
             k = terms.get(term, 0) * doc_weight
             if k > max_tfidf:
                 max_tfidf = k

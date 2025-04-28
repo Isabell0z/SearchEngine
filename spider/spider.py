@@ -91,7 +91,7 @@ class Spider:
                     last_modify_time = "1970-01-01T00:00:00Z"  # default value if not available
                 soup = BeautifulSoup(response.text, 'lxml')
                 title = soup.title.string if soup.title else ''
-                content = soup.get_text(separator='\n')  # 获取网页正文内容
+                content = soup.find('body').get_text(separator='\n')  # 获取网页正文内容
                 size=response.raw._fp_bytes_read if response.raw._fp_bytes_read else 0 #get size of the page(bytes)
 
                 # 提取信息

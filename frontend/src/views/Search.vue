@@ -1,7 +1,8 @@
 <template>
   <div class="page-layout">
     <!-- 左侧筛选栏 -->
-    <aside class="sidebar">
+    <el-aside v-if="allKeywords && allKeywords.length > 0" class="sidebar">
+    
       <h3>Keywords</h3>
       <div v-for="keyword in allKeywords" :key="keyword">
         <label>
@@ -13,7 +14,7 @@
           {{ keyword }}
         </label>
       </div>
-    </aside>
+    </el-aside>
     <main class="main-content">
       <button
     v-show="showBackToTop"
@@ -40,6 +41,7 @@
         <el-button type="primary" @click="search"> Search </el-button>
         </el-col>
       </el-row>
+      
       <div class="sort-buttons">
         <button
         :class="{ active: sortBy === 'relevance' }"
@@ -55,13 +57,11 @@
       </button>
       <p class="result-count">Total {{ filteredResults.length }} results</p>
     </div>
+    <div v-if="corrected_query" class="mt-10">
+          Are you looking for: <strong>{{ corrected_query }}</strong>?
+      </div>
     </el-card>
-    <div v-if="aiResult" class="mt-8">
-      <el-card class="p-4 rounded-lg border border-gray-200">
-        <h3 class="text-l font-semibold text-gray-800">AI Response</h3>
-        <p class="text-gray-600 mt-4">{{ aiResult }}</p>
-      </el-card>
-    </div>
+    
     <div v-if="filteredResults && filteredResults.length" class="mt-8 space-y-6">
       <SearchResult
         v-for="(result, index) in paginatedResults"
@@ -77,6 +77,7 @@
         class="flex justify-center mt-6"
       />
     </div>
+  
 
     <el-empty v-else-if="searched" description="No results found." class="mt-10" />
   </div>
@@ -88,12 +89,53 @@
 <script setup>
 import { computed } from 'vue';
 import { watch } from 'vue'
+import axios from 'axios'
+import { useRoute } from 'vue-router';
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import SearchResult from '@/components/SearchResult.vue'
-const aiResult = ref("AI result");
+const aiResult = ref("");
+const searchAI = async () => {
+  if (!query.value) return;  // 没有输入就别请求了
+  try {
+    const endpoint = "https://hkust.azure-api.net/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-10-21";
+
+    const response = await axios.post(
+      endpoint,
+      {
+        messages: [
+          { role: "user", content: query.value }
+        ],
+        max_tokens: 100,
+        temperature: 0.5,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer 4aa4a96857d34b759c149840af2d4641`,
+        },
+      }
+    );
+
+    console.log('API Response:', response.data);
+    aiResult.value = response.data.choices[0].message.content;
+  } catch (error) {
+    console.error("Error fetching from Azure:", error);
+    aiResult.value = "Failed to fetch AI response.";
+  }
+};
 const authStore = useAuthStore();
-const query = ref('')
+const route = useRoute();
+const queryFromUrl = computed(() => route.query.query); // 从 URL 获取 query 参数
+const query = ref(''); // 用于存储输入框的查询词
+
+// 如果 URL 参数不存在，可以使用输入框的值
+if (!queryFromUrl.value) {
+  query.value = ''; // 允许从输入框中获取查询
+} else {
+  query.value = queryFromUrl.value; // 如果从 URL 参数获取
+}
+
 const results = ref([])
 const searched = ref(false)
 const history = ref([])
@@ -126,13 +168,18 @@ const allKeywords = computed(() => {
   }
   return []
 })
+watch(query, (newQuery) => {
+  if (newQuery && newQuery.trim()) {
+    searchAI();  // 只要有新的query，就调用
+  }
+});
 watch(results, (newResults) => {
   console.log("Results updated:", newResults)
   console.log("All keywords updated:", allKeywords.value)  // 打印新的 allKeywords
 })
 const selectedKeywords = ref([])
 const showBackToTop = ref(false)
-
+const corrected_query = ref(null) // 用于存储纠正的查询
 const handleScroll = () => {
   showBackToTop.value = window.scrollY > 300
 }
@@ -208,13 +255,6 @@ const fetchHistory = async () => {
   }
 }
 
-onMounted(() => {
-  if (authStore.isLoggedIn) {
-    fetchHistory();
-  }
-  window.addEventListener('scroll', handleScroll)
-});
-
 const search = async () => {
   try {
     const token = localStorage.getItem('token');
@@ -232,13 +272,25 @@ const search = async () => {
     const data = await res.json();
     
     // 将返回的数据存储到 results 中
-    results.value = data;
+    results.value = data.result;
+    corrected_query.value = data.corrected_query || null; // 处理纠正的查询
+    console.log('corrected_query:', corrected_query.value)
     // 标记已完成搜索
     searched.value = true;
   } catch (err) {
     console.error('Search request failed:', err); // 处理错误
   }
 }
+
+onMounted(() => {
+  if (query.value) {
+    search()  // 如果有查询参数，则执行搜索
+  }
+  if (authStore.isLoggedIn) {
+    fetchHistory();
+  }
+  window.addEventListener('scroll', handleScroll)
+})
 </script>
 <script>
   export default {
