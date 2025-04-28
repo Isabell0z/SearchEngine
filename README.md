@@ -26,9 +26,9 @@
 
 ## Setup
 ### Crawler
-
+- Start the Crawler: ```python spider.py```
 ### Indexer
-
+- Start the Indexer: ```javac IndexServiceTest.java```
 ### Backend 
 - Start the Search API Server: ```python app.py```
 ### Frontend
