@@ -53,7 +53,7 @@
       >
       Sorted by authority
       </button>
-      <p class="result-count">Total {{ results.length }} results</p>
+      <p class="result-count">Total {{ filteredResults.length }} results</p>
     </div>
     </el-card>
     <div v-if="aiResult" class="mt-8">
@@ -62,7 +62,7 @@
         <p class="text-gray-600 mt-4">{{ aiResult }}</p>
       </el-card>
     </div>
-    <div v-if="results && results.length" class="mt-8 space-y-6">
+    <div v-if="filteredResults && filteredResults.length" class="mt-8 space-y-6">
       <SearchResult
         v-for="(result, index) in paginatedResults"
         :key="index"
@@ -71,7 +71,7 @@
       <el-pagination
         :current-page="currentPage"
         :page-size="itemsPerPage"
-        :total="results.length"
+        :total="filteredResults.length"
         @current-change="handlePageChange"
         layout="prev, pager, next, jumper"
         class="flex justify-center mt-6"
@@ -105,11 +105,11 @@ const allKeywords = computed(() => {
   const keywordFreqMap = new Map();
   if (results.value.length != 0) {
     results.value.forEach(result => {
-      if (result.content && Array.isArray(result.content.term_freq_list)) {
-        result.content.term_freq_list.forEach(keyword => {
-          if (keyword.term) {
-            const currentFreq = keywordFreqMap.get(keyword.term) || 0;
-            keywordFreqMap.set(keyword.term, currentFreq + (keyword.frequency || 0));
+      if (result.keywords && Array.isArray(result.keywords)) {
+        result.keywords.forEach(keyword => {
+          if (keyword) {
+            const currentFreq = keywordFreqMap.get(keyword) || 0;
+            keywordFreqMap.set(keyword, currentFreq + 1);
           }
         });
       }
@@ -157,8 +157,8 @@ const filteredResults = computed(() => {
 
   if (selectedKeywords.value.length > 0) {
     filtered = filtered.filter(item =>
-      selectedKeywords.value.every(k =>
-        item.content.term_freq_list.some(termObj => termObj.term === k)
+      selectedKeywords.value.some(k =>
+        item.keywords.some(termObj => termObj === k)
       )
   )
 }
@@ -255,7 +255,7 @@ const search = async () => {
   padding: 0 0px;
 }
 .sidebar {
-  width: 200px;
+  width: 250px;
   min-width: 180px;
   padding: 16px;
   border-right: 1px solid #eee;

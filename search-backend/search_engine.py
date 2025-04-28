@@ -62,8 +62,10 @@ class SearchEngine:
             "size": 50
         }
         response = es.search(index="meta_doc", body=body)
+        response_keywords = es.search(index="web_extended_info", body=body)
         response_content = es.search(index="web_pages", body=body)
         text_content = {}
+        keywords_list = {}
         for hit in response_content["hits"]["hits"]:
             source = hit["_source"]
             page_id = source["page_id"]
@@ -73,7 +75,13 @@ class SearchEngine:
             source = hit["_source"]
             page_id = source["page_id"]
             pageid_to_content[page_id] = source          
-        
+        for hit in response_keywords["hits"]["hits"]:
+            source = hit["_source"]
+            page_id = source["page_id"]
+            if source['plot_keywords']:
+                keywords_list[page_id] = source['plot_keywords']   
+            else :
+                 keywords_list[page_id] = []
         links_ids = []
         for doc, score,_ in scores[:50]:
             content = pageid_to_content.get(int(doc))
@@ -112,6 +120,7 @@ class SearchEngine:
                 top_docs.append({
                     "content": content,
                     "snippents":  snippents,
+                    "keywords": keywords_list.get(int(doc),[]),
                     "score": score
                 })
 
