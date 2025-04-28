@@ -81,8 +81,8 @@ class SearchEngine:
         for hit in response_keywords["hits"]["hits"]:
             source = hit["_source"]
             page_id = source["page_id"]
-            if source['plot_keywords']:
-                keywords_list[page_id] = source['plot_keywords']   
+            if source['genre']:
+                keywords_list[page_id] = source['genre']   
             else :
                  keywords_list[page_id] = []
         links_ids = []
