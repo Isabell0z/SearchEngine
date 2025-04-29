@@ -1,6 +1,5 @@
 # Search Engine
-## System Architecture
-![System Architecture](images/architecture.png)
+
 ## Components
 ### Crawler
 - Collect web pages starting from seed URL (https://www.cse.ust.hk/~kwtleung/COMP4321/testpage.htm) and parses text content
