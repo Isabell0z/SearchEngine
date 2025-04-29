@@ -24,15 +24,15 @@
 
 ## Requirements
 
-Python 3
+- Python 3
 
-Java 17
+- Java 17
 
-SpringBoot 2.6
+- SpringBoot 2.6
 
-ElasticSearch 7.0
+- ElasticSearch 7.0
 
-MySQL 8.0
+- MySQL 8.0
 
 ## Setup
 ### Crawler
@@ -41,6 +41,20 @@ MySQL 8.0
 - Start the Indexer: ```javac IndexServiceTest.java```
 ### Backend 
 - Start the Search API Server: ```python app.py```
+- Create tables in MySQL:
+```
+ CREATE TABLE users (
+         id INT PRIMARY KEY AUTO_INCREMENT,
+         username VARCHAR(50) UNIQUE NOT NULL,
+         password VARCHAR(255) NOT NULL
+     );
+CREATE TABLE search_log (
+         id INT PRIMARY KEY AUTO_INCREMENT,
+         username VARCHAR(50) NOT NULL,
+         query TEXT,
+         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+     );
+```
 ### Frontend
 - Start the Search Web UI: ```npm run serve```
 
