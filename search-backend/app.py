@@ -19,8 +19,8 @@ jwt = JWTManager(app)
 db = mysql.connector.connect(
     host="localhost",
     user="root",
-    password="zhouchuqiao0213",
-    database="User"
+    # password="zhouchuqiao0213",
+    database="user"
 )
 cursor = db.cursor(dictionary=True)
 
